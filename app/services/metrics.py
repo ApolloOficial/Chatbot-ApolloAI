@@ -7,6 +7,10 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, gene
 
 class MetricsRegistry:
     def __init__(self) -> None:
+        self._request_count = 0
+        self._error_count = 0
+        self._resolution_count = 0
+        self._accumulated_cost = 0.0
         self.registry = CollectorRegistry()
         self.requests = Counter("apolloai_requests_total", "Requisições ao chatbot", registry=self.registry)
         self.errors = Counter("apolloai_errors_total", "Erros controlados", ["tipo"], registry=self.registry)
@@ -27,3 +31,21 @@ class MetricsRegistry:
 
     def render_prometheus(self) -> bytes:
         return generate_latest(self.registry)
+
+    def record_request(self) -> None:
+        self._request_count += 1
+        self.requests.inc()
+
+    def record_error(self, error_type: str) -> None:
+        self._error_count += 1
+        self.errors.labels(error_type).inc()
+        self.error_ratio.set(self._error_count / max(self._request_count, 1))
+
+    def record_usage(self, input_tokens: int, output_tokens: int, cost: float, resolved: bool) -> None:
+        self.input_tokens.inc(input_tokens)
+        self.output_tokens.inc(output_tokens)
+        self.estimated_cost.inc(cost)
+        self._accumulated_cost += cost
+        if resolved:
+            self._resolution_count += 1
+        self.cost_per_resolution.set(self._accumulated_cost / max(self._resolution_count, 1))
