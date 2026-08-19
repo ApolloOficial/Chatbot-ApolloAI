@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _project_text() -> str:
-    files = [*ROOT.glob("app/**/*.py"), ROOT / "wsgi.py", ROOT / "requirements.txt", ROOT / "README.md"]
+    files = [*ROOT.glob("app/**/*.py"), ROOT / "wsgi.py", ROOT / "requirements.txt"]
     return "\n".join(path.read_text(encoding="utf-8") for path in files if path.is_file() and ".git" not in path.parts)
 
 

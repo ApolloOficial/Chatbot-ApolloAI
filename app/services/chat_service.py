@@ -44,10 +44,15 @@ class ChatService:
     def execute(self, request: ChatRequest) -> ChatResponse:
         started = time.perf_counter()
         self.metrics.record_request()
-        if not self.memory.verify_ownership(request.user_id, request.session_id):
-            self.metrics.record_error("acesso_sessao_negado")
-            raise SessionAccessDenied
-        if self.config["MONGODB_REQUIRED"] and self.memory.health() != "disponivel":
+        try:
+            if not self.memory.verify_ownership(request.user_id, request.session_id):
+                self.metrics.record_error("acesso_sessao_negado")
+                raise SessionAccessDenied
+            if self.config["MONGODB_REQUIRED"] and self.memory.health() != "disponivel":
+                self.metrics.mongo_failures.inc()
+                self.metrics.record_error("mongodb_indisponivel")
+                return self._error(request.session_id, "O histórico persistente está temporariamente indisponível. Tente novamente.")
+        except MemoryUnavailable:
             self.metrics.mongo_failures.inc()
             self.metrics.record_error("mongodb_indisponivel")
             return self._error(request.session_id, "O histórico persistente está temporariamente indisponível. Tente novamente.")
