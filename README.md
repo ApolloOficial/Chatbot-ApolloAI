@@ -48,6 +48,8 @@ cp .env.example .env
 
 Preencha apenas o provedor escolhido. Nunca versione `.env`. O ApolloAI não usa `DATABASE_URL` nem qualquer credencial PostgreSQL.
 
+Para Groq, o modelo padrão é `openai/gpt-oss-120b`. Se o seu `.env` definir `AI_MODEL`, use um identificador atualmente disponível para a sua conta.
+
 Indexe as fontes:
 
 ```bash

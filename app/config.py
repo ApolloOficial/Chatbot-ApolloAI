@@ -35,7 +35,7 @@ class Config:
     REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() == "true"
 
     AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
-    AI_MODEL = os.getenv("AI_MODEL", "llama-3.3-70b-versatile")
+    AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-120b")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     AI_TIMEOUT_SECONDS = float(os.getenv("AI_TIMEOUT_SECONDS", "30"))
