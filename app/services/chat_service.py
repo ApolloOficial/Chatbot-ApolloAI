@@ -36,9 +36,11 @@ class ChatService:
     def from_app(cls, app: Flask):
         from app.extensions import get_service
 
+        from app.services.mcp_client import MCPRetriever
+
         return cls(
             app.config, get_service(app, "memory"), get_service(app, "redis"),
-            app.extensions["metrics"],
+            app.extensions["metrics"], retriever=MCPRetriever(get_service(app, "mcp")),
         )
 
     def execute(self, request: ChatRequest) -> ChatResponse:

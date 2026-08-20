@@ -36,6 +36,7 @@ class Config:
     MONGODB_REQUIRED = os.getenv("MONGODB_REQUIRED", "true").lower() == "true"
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() == "true"
+    REDIS_REQUIRED = os.getenv("REDIS_REQUIRED", "true").lower() == "true"
 
     AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
     AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-120b")
@@ -45,6 +46,7 @@ class Config:
     AI_MAX_RETRIES = int(os.getenv("AI_MAX_RETRIES", "1"))
 
     MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio")
+    MCP_REQUIRED = os.getenv("MCP_REQUIRED", "true").lower() == "true"
     MCP_TIMEOUT_SECONDS = float(os.getenv("MCP_TIMEOUT_SECONDS", "12"))
     MCP_SERVER_COMMAND = os.getenv("MCP_SERVER_COMMAND", "python -m app.mcp_server")
     RAG_TOP_K = int(os.getenv("RAG_TOP_K", "5"))

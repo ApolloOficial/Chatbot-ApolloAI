@@ -34,6 +34,10 @@ def get_service(app: Flask, name: str):
         from app.services.redis_service import RedisSupport
 
         service = RedisSupport.from_config(app.config)
+    elif name == "mcp":
+        from app.services.mcp_client import SolarMCPClient
+
+        service = SolarMCPClient.from_config(app.config)
     else:
         raise KeyError(f"Serviço desconhecido: {name}")
     services[name] = service

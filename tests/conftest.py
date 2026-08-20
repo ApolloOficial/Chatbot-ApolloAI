@@ -34,6 +34,11 @@ class FakeRagHealth:
     is_ready = True
 
 
+class FakeMCPHealth:
+    def health(self):
+        return "disponivel"
+
+
 class FakeRuntime:
     def __init__(self):
         self.calls = []
@@ -108,7 +113,9 @@ def app_bundle():
     retriever = FakeRetriever()
     redis = FakeRedis()
     service = ChatService(app.config, memory, redis, app.extensions["metrics"], runtime, retriever)
-    app.extensions["apollo_services"].update({"chat": service, "memory": memory, "rag": FakeRagHealth(), "redis": redis})
+    app.extensions["apollo_services"].update({
+        "chat": service, "memory": memory, "rag": FakeRagHealth(), "redis": redis, "mcp": FakeMCPHealth(),
+    })
     return app, memory, runtime, retriever
 
 

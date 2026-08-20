@@ -12,14 +12,22 @@ def health():
     memory = get_service(current_app, "memory")
     rag = get_service(current_app, "rag")
     redis = get_service(current_app, "redis")
+    mcp = get_service(current_app, "mcp")
     mongo_state = memory.health()
+    redis_state = redis.health()
+    mcp_state = mcp.health()
+    essential_states = [mongo_state == "disponivel", rag.is_ready]
+    if current_app.config["REDIS_REQUIRED"]:
+        essential_states.append(redis_state == "disponivel")
+    if current_app.config["MCP_REQUIRED"]:
+        essential_states.append(mcp_state == "disponivel")
     payload = {
-        "status": "ok" if mongo_state == "disponivel" and rag.is_ready else "degradado",
+        "status": "ok" if all(essential_states) else "degradado",
         "servico": "ApolloAI",
         "versao": current_app.config["VERSION"],
         "mongodb": mongo_state,
         "rag": "disponivel" if rag.is_ready else "nao_indexado",
-        "mcp": "configurado",
-        "redis": redis.health(),
+        "mcp": mcp_state,
+        "redis": redis_state,
     }
     return jsonify(payload), 200 if payload["status"] == "ok" else 503

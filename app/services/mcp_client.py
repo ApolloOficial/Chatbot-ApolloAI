@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import shlex
+import time
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ class SolarMCPClient:
             command=parts[0], args=parts[1:], cwd=str(cwd) if cwd else None,
         )
         self.timeout_seconds = timeout_seconds
+        self._health_cache: tuple[float, str] | None = None
 
     @classmethod
     def from_config(cls, config):
@@ -39,6 +41,20 @@ class SolarMCPClient:
         except Exception as error:
             logger.warning("mcp_indisponivel", extra={"error_type": type(error).__name__, "tool": tool_name})
             raise MCPUnavailable("A recuperação técnica está temporariamente indisponível.") from error
+
+    def health(self, cache_seconds: float = 30) -> str:
+        """Confirma handshake e catálogo de ferramentas, com cache curto."""
+        now = time.monotonic()
+        if self._health_cache and now - self._health_cache[0] < cache_seconds:
+            return self._health_cache[1]
+        try:
+            names = asyncio.run(asyncio.wait_for(self._list_tools(), timeout=self.timeout_seconds))
+            state = "disponivel" if set(MCPRetriever.TOOLS.values()).issubset(names) else "incompleto"
+        except Exception as error:
+            logger.warning("mcp_health_indisponivel", extra={"error_type": type(error).__name__})
+            state = "indisponivel"
+        self._health_cache = (now, state)
+        return state
 
     async def _search(self, tool_name: str, question: str) -> list[dict[str, Any]]:
         async with stdio_client(self.parameters) as (read_stream, write_stream):
@@ -58,6 +74,13 @@ class SolarMCPClient:
                         parsed = json.loads(text)
                         return parsed if isinstance(parsed, list) else parsed.get("result", [])
                 return []
+
+    async def _list_tools(self) -> set[str]:
+        async with stdio_client(self.parameters) as (read_stream, write_stream):
+            async with ClientSession(read_stream, write_stream) as session:
+                await session.initialize()
+                result = await session.list_tools()
+                return {tool.name for tool in result.tools}
 
 
 class MCPRetriever:
