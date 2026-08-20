@@ -30,6 +30,8 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run isolated test suite
         run: python -m pytest -m "not integration" -q
+      - name: Evaluate RAG retrieval quality
+        run: python scripts/evaluate_rag.py
       - name: Run real MCP stdio contract
         env:
           RUN_MCP_INTEGRATION: "1"

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "maintenance-types",
+      "query": "Qual é a diferença entre manutenção preventiva e corretiva?",
+      "expected_terms": ["preventiva", "corretiva"],
+      "relevant": true
+    },
+    {
+      "id": "environmental-soiling",
+      "query": "Como a sujidade e o clima afetam a manutenção do sistema?",
+      "expected_terms": ["sujidade", "clima"],
+      "relevant": true
+    },
+    {
+      "id": "cable-damage",
+      "query": "Quais danos podem acontecer em cabos fotovoltaicos?",
+      "expected_terms": ["cabos", "animais", "esmagamento"],
+      "relevant": true
+    },
+    {
+      "id": "safe-intervention",
+      "query": "O que fazer antes de intervir com risco elétrico?",
+      "expected_terms": ["procedimentos internos", "instrumentos"],
+      "relevant": true
+    },
+    {
+      "id": "performance-diagnosis",
+      "query": "A redução de geração confirma uma falha?",
+      "expected_terms": ["não confirma", "inspeção", "medições"],
+      "relevant": true
+    },
+    {
+      "id": "unrelated-recipe",
+      "query": "Como preparar uma receita de bolo de chocolate?",
+      "expected_terms": [],
+      "relevant": false
+    }
+  ]
+}
