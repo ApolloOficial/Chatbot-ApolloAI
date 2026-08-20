@@ -46,7 +46,7 @@ def evaluate(retriever, cases: list[dict]) -> dict:
         "hit_rate_at_k": round(hit_rate, 4),
         "mean_reciprocal_rank": round(reciprocal_rank_sum / relevant_total, 4) if relevant_total else 1.0,
         "irrelevant_rejection_rate": round(rejection_rate, 4),
-        "passed": hit_rate >= 0.8 and rejection_rate == 1.0,
+        "passed": hit_rate == 1.0 and rejection_rate == 1.0,
         "details": details,
     }
 

@@ -108,9 +108,13 @@ class SolarKnowledgeBase:
         query_terms = set(_tokens(query))
         scored = []
         for chunk in self._load():
-            if not query_terms.intersection(chunk.get("termos", [])):
+            chunk_terms = set(chunk.get("termos", []))
+            intersection = query_terms.intersection(chunk_terms)
+            if not intersection:
                 continue
-            score = _dot(query_vector, chunk["embedding"])
+            vector_score = max(0.0, _dot(query_vector, chunk["embedding"]))
+            lexical_coverage = len(intersection) / max(len(query_terms), 1)
+            score = 0.75 * vector_score + 0.25 * lexical_coverage
             if score >= self.min_score:
                 public = {key: value for key, value in chunk.items() if key not in {"embedding", "id", "termos"}}
                 public["score"] = round(score, 4)
