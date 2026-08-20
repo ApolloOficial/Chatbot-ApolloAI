@@ -73,3 +73,22 @@ def test_health_metrics_and_openapi_are_flask_routes(client):
     assert client.get("/metrics").status_code == 200
     assert client.get("/openapi.json").json["info"]["title"] == "ApolloAI"
     assert client.get("/docs").status_code == 200
+
+
+def test_authenticated_mode_requires_bearer_and_trusted_identity(app_bundle, payload):
+    app = app_bundle[0]
+    app.config.update(AUTH_REQUIRED=True, APOLLOAI_API_TOKEN="test-service-token")
+    protected = app.test_client()
+
+    assert protected.post("/chat", json=payload).status_code == 401
+    assert protected.post(
+        "/chat", json=payload, headers={"Authorization": "Bearer test-service-token"},
+    ).status_code == 401
+
+    response = protected.post(
+        "/chat",
+        json={**payload, "user_id": "identidade-forjada"},
+        headers={"Authorization": "Bearer test-service-token", "X-User-ID": payload["user_id"]},
+    )
+    assert response.status_code == 200
+    assert app_bundle[1].messages.find_one({"role": "usuario"})["user_id"] == payload["user_id"]

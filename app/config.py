@@ -22,6 +22,8 @@ class Config:
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", "32768"))
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     CORS_ORIGINS = _csv("CORS_ORIGINS", "http://localhost:5000,http://localhost")
+    AUTH_REQUIRED = os.getenv("AUTH_REQUIRED", "false").lower() == "true"
+    APOLLOAI_API_TOKEN = os.getenv("APOLLOAI_API_TOKEN")
     FRONTEND_DIR = BASE_DIR / "frontend"
     SOLAR_DATA_DIR = BASE_DIR / "data" / "solar"
     SOLAR_DOCUMENTS_DIR = SOLAR_DATA_DIR / "documentos"

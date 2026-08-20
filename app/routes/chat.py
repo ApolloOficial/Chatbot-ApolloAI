@@ -3,6 +3,7 @@
 from flask import Blueprint, current_app, jsonify, request
 from pydantic import ValidationError
 
+from app.auth import AuthenticationRequired, TrustedIdentityRequired, trusted_user_id
 from app.extensions import get_service
 from app.schemas import ChatRequest, public_validation_errors
 from app.services.chat_service import SessionAccessDenied
@@ -12,8 +13,17 @@ chat_bp = Blueprint("chat", __name__)
 
 @chat_bp.post("/chat")
 def chat():
+    raw_payload = request.get_json(silent=True) or {}
     try:
-        payload = ChatRequest.model_validate(request.get_json(silent=True) or {})
+        identity = trusted_user_id(request, current_app.config, raw_payload.get("user_id"))
+    except AuthenticationRequired:
+        return jsonify({"status": "erro", "erro": "Autenticação obrigatória."}), 401
+    except TrustedIdentityRequired:
+        return jsonify({"status": "erro", "erro": "Identidade confiável obrigatória."}), 401
+    if identity is not None:
+        raw_payload["user_id"] = identity
+    try:
+        payload = ChatRequest.model_validate(raw_payload)
     except ValidationError as error:
         return jsonify({"status": "erro", "erro": "Payload inválido.", "detalhes": public_validation_errors(error.errors())}), 422
 
