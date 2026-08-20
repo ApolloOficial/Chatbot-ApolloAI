@@ -18,6 +18,7 @@ def _csv(name: str, default: str) -> list[str]:
 class Config:
     APP_NAME = "ApolloAI"
     VERSION = "1.0.0"
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
     JSON_AS_ASCII = False
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", "32768"))
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
