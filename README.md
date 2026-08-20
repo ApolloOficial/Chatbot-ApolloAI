@@ -10,7 +10,7 @@ ApolloAI é o módulo de inteligência artificial do Apollo para orientação de
 - RAG local persistente com embeddings por feature hashing e metadados de documento, seção e página quando disponível;
 - servidor e cliente MCP reais para as três ferramentas de conhecimento solar;
 - MongoDB para sessões, mensagens, resumos, memória longa e observabilidade;
-- Redis opcional para ranking/cache/fila, nunca como única cópia do histórico;
+- Redis obrigatório no ambiente acadêmico para ranking e fila, nunca como única cópia do histórico;
 - métricas Prometheus, cenários de custos e ROI configuráveis.
 
 O diagrama Mermaid e as fronteiras estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -19,7 +19,7 @@ O diagrama Mermaid e as fronteiras estão em [docs/ARCHITECTURE.md](docs/ARCHITE
 
 - Python 3.11 a 3.13 recomendado;
 - MongoDB 7 ou 8;
-- Redis 7 opcional;
+- Redis 7;
 - chave Groq ou Google para execução dos agentes em produção.
 
 O ambiente de avaliação usou Python 3.14; os testes passaram, embora o LangChain tenha emitido um aviso de compatibilidade legado do Pydantic nessa versão. A imagem Docker usa Python 3.13.
@@ -114,7 +114,10 @@ Content-Type: application/json
 
 Outros endpoints:
 
-- `GET /health`: MongoDB, RAG, MCP e Redis;
+- `GET /live`: vida do processo, sem depender de serviços externos;
+- `GET /health`: prontidão de MongoDB, RAG, MCP e Redis;
+- `GET /.well-known/agent-card.json` e `POST /a2a/v1`: descoberta e mensagens A2A 1.0;
+- `POST /sessions/{session_id}/close`: encerra a sessão e consolida sua memória longa;
 - `GET /metrics`: formato Prometheus, sem PII;
 - `GET /openapi.json` e `GET /docs`: documentação da API.
 
@@ -152,6 +155,7 @@ A fonte oficial consultada é o resumo NREL/FS-7A40-68281. Como o terminal do am
 - [MCP](docs/MCP.md)
 - [A2A](docs/A2A.md)
 - [Autenticação](docs/AUTHENTICATION.md)
+- [Implantação](docs/DEPLOYMENT.md)
 - [Observabilidade, custos e ROI](docs/OBSERVABILITY.md)
 - [Privacidade e retenção](docs/PRIVACY.md)
 - [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
@@ -159,7 +163,7 @@ A fonte oficial consultada é o resumo NREL/FS-7A40-68281. Como o terminal do am
 ## Limitações reais
 
 - respostas de produção dependem de MongoDB e de um provedor de IA configurado;
-- Redis pode ficar indisponível sem derrubar o fluxo principal;
+- Redis indisponível não apaga o histórico, mas deixa `/health` degradado quando `REDIS_REQUIRED=true`;
 - a qualidade do RAG está limitada às fontes efetivamente indexadas;
 - a síntese NREL atual é curta e não substitui manuais, normas ou procedimentos internos;
 - o Swagger UI carrega seus arquivos visuais de CDN, enquanto `/openapi.json` funciona localmente;

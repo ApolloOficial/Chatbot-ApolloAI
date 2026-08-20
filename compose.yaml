@@ -8,9 +8,9 @@ services:
       MONGODB_DATABASE: apollo_ai
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:5000
-    env_file:
-      - path: .env
-        required: false
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      APOLLOAI_API_TOKEN: ${APOLLOAI_API_TOKEN:-}
     depends_on:
       mongo:
         condition: service_healthy

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apolloai-config
+data:
+  AUTH_REQUIRED: "true"
+  MONGODB_REQUIRED: "true"
+  REDIS_ENABLED: "true"
+  REDIS_REQUIRED: "true"
+  MCP_REQUIRED: "true"
+  MCP_SERVER_COMMAND: "python -m app.mcp_server"
+  PUBLIC_BASE_URL: "https://apolloai.example.invalid"
+  CORS_ORIGINS: "https://apollo.example.invalid"
+  AI_PROVIDER: "groq"
+  AI_MODEL: "openai/gpt-oss-120b"

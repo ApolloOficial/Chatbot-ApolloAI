@@ -7,6 +7,12 @@ from app.extensions import get_service
 health_bp = Blueprint("health", __name__)
 
 
+@health_bp.get("/live")
+def live():
+    """Liveness não reinicia o processo por falhas em dependências externas."""
+    return jsonify({"status": "ok", "servico": "ApolloAI", "versao": current_app.config["VERSION"]})
+
+
 @health_bp.get("/health")
 def health():
     memory = get_service(current_app, "memory")

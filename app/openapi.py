@@ -31,6 +31,7 @@ def build_openapi(version: str) -> dict:
             "/.well-known/agent-card.json": {"get": {"summary": "Publica o Agent Card A2A 1.0", "responses": {"200": {"description": "Capacidades A2A"}}}},
             "/a2a/v1": {"post": {"summary": "Executa SendMessage por A2A JSON-RPC 1.0", "responses": {"200": {"description": "Resposta JSON-RPC"}, "401": {"description": "Autenticação obrigatória"}}}},
             "/health": {"get": {"summary": "Saúde das dependências", "responses": {"200": {"description": "Saudável"}, "503": {"description": "Degradado"}}}},
+            "/live": {"get": {"summary": "Vida do processo sem testar dependências", "responses": {"200": {"description": "Processo ativo"}}}},
             "/metrics": {"get": {"summary": "Métricas Prometheus", "responses": {"200": {"description": "Métricas sem PII"}}}},
         },
         "components": {"securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}}, "schemas": {"ChatResponse": {

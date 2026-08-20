@@ -73,6 +73,7 @@ def test_health_metrics_and_openapi_are_flask_routes(client):
     assert health.status_code == 503
     assert health.json["redis"] == "indisponivel"
     assert health.json["mcp"] == "disponivel"
+    assert client.get("/live").status_code == 200
     assert client.get("/metrics").status_code == 200
     assert client.get("/openapi.json").json["info"]["title"] == "ApolloAI"
     assert client.get("/docs").status_code == 200
