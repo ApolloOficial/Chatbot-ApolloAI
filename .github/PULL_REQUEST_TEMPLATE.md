@@ -1,22 +1,79 @@
-## Resumo
+# Resumo
 
-Descreva o problema e a alteração objetiva realizada para resolvê-lo.
+<!-- Descreva brevemente o objetivo desta PR. -->
 
-## Evidências dos requisitos
+**Issue/Tarefa:** #
 
-- Requisito ou disciplina:
-- Arquivos ou endpoints relacionados:
-- Evidência produzida (teste, captura de tela, log, diagrama ou comando):
+## Alterações
 
-## Validação
+<!-- Liste as principais alterações realizadas. -->
 
-- [ ] Executei os testes automatizados relevantes.
-- [ ] Testei os fluxos de falha, e não apenas o fluxo de sucesso.
-- [ ] Não incluí credenciais, dados pessoais, índices gerados ou arquivos `.env` no commit.
-- [ ] Atualizei os contratos e a documentação quando houve mudança de comportamento.
-- [ ] Verifiquei a consistência de MongoDB, Redis, MCP, A2A, métricas e guardrails quando afetados.
-- [ ] As mensagens dos commits seguem Conventional Commits e descrevem incrementos lógicos reais.
+-
+-
+-
 
-## Riscos e reversão
+## API
 
-Liste os riscos operacionais, de privacidade, segurança, custo ou compatibilidade e explique como a alteração pode ser revertida com segurança.
+<!-- Preencha apenas se aplicável. -->
+
+- Endpoint(s):
+- Entidade(s):
+- Regra(s) de negócio:
+
+### Camadas alteradas
+
+> Marque os itens alterados substituindo `⬜` por `✅`.
+
+- ⬜ Controller
+- ⬜ Service
+- ⬜ Repository
+- ⬜ Entity
+- ⬜ DTO
+- ⬜ Exception Handler
+- ⬜ Configuração
+
+## Banco e Integrações
+
+> Marque apenas o que foi alterado substituindo `⬜` por `✅`.
+
+- ⬜ Entidades JPA / PostgreSQL
+- ⬜ Migration SQL
+- ⬜ Procedure / Function
+- ⬜ Swagger/OpenAPI
+- ⬜ Spring Security
+- ⬜ NoSQL
+- ⬜ Não se aplica
+
+## Testes
+
+> Marque o que foi validado substituindo `⬜` por `✅`.
+
+- ⬜ Testes unitários
+- ⬜ Testes de integração
+- ⬜ Teste manual
+- ⬜ Cenários de sucesso e erro
+- ⬜ Não se aplica
+
+## Impacto
+
+> Marque os impactos aplicáveis substituindo `⬜` por `✅`.
+
+- ⬜ Front-end
+- ⬜ Banco de dados
+- ⬜ Documentação (Swagger/OpenAPI)
+- ⬜ Infraestrutura/Configuração
+- ⬜ Não há impacto externo
+
+## Checklist
+
+> Marque os itens concluídos substituindo `⬜` por `✅`.
+
+- ⬜ Código segue a arquitetura do projeto
+- ⬜ Entradas da API possuem validação adequada
+- ⬜ Exceções retornam respostas HTTP apropriadas
+- ⬜ Documentação (Swagger/OpenAPI) atualizada, quando necessário
+- ⬜ Não há secrets, credenciais ou dados sensíveis versionados
+
+## Observações
+
+<!-- Informe pontos de atenção para o revisor ou dependências desta PR. -->
