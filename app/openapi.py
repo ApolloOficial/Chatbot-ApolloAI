@@ -26,11 +26,14 @@ def build_openapi(version: str) -> dict:
         "openapi": "3.1.0",
         "info": {"title": "ApolloAI", "version": version, "description": "Orientação técnica sobre ativos fotovoltaicos; não altera o banco operacional do Apollo."},
         "paths": {
-            "/chat": {"post": {"summary": "Executa o grafo multiagente", "requestBody": {"required": True, "content": {"application/json": {"schema": chat_request}}}, "responses": {"200": {"description": "Resposta processada", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatResponse"}}}}, "403": {"description": "Sessão pertence a outro usuário"}, "422": {"description": "Payload inválido"}, "503": {"description": "Dependência essencial indisponível"}}}},
+            "/chat": {"post": {"summary": "Executa o grafo multiagente", "security": [{"bearerAuth": []}], "parameters": [{"in": "header", "name": "X-User-ID", "schema": {"type": "string"}, "description": "Identidade confiável quando AUTH_REQUIRED=true"}], "requestBody": {"required": True, "content": {"application/json": {"schema": chat_request}}}, "responses": {"200": {"description": "Resposta processada", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChatResponse"}}}}, "401": {"description": "Autenticação ou identidade ausente"}, "403": {"description": "Sessão pertence a outro usuário"}, "422": {"description": "Payload inválido"}, "503": {"description": "Dependência essencial indisponível"}}}},
+            "/sessions/{session_id}/close": {"post": {"summary": "Encerra e resume uma sessão", "parameters": [{"in": "path", "name": "session_id", "required": True, "schema": {"type": "string"}}], "responses": {"200": {"description": "Sessão encerrada"}, "403": {"description": "Sessão pertence a outro usuário"}}}},
+            "/.well-known/agent-card.json": {"get": {"summary": "Publica o Agent Card A2A 1.0", "responses": {"200": {"description": "Capacidades A2A"}}}},
+            "/a2a/v1": {"post": {"summary": "Executa SendMessage por A2A JSON-RPC 1.0", "responses": {"200": {"description": "Resposta JSON-RPC"}, "401": {"description": "Autenticação obrigatória"}}}},
             "/health": {"get": {"summary": "Saúde das dependências", "responses": {"200": {"description": "Saudável"}, "503": {"description": "Degradado"}}}},
             "/metrics": {"get": {"summary": "Métricas Prometheus", "responses": {"200": {"description": "Métricas sem PII"}}}},
         },
-        "components": {"schemas": {"ChatResponse": {
+        "components": {"securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}}, "schemas": {"ChatResponse": {
             "type": "object", "required": ["session_id", "resposta", "status", "rota", "agentes_chamados", "fontes"],
             "properties": {
                 "session_id": {"type": "string"}, "resposta": {"type": "string"},

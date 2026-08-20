@@ -150,6 +150,8 @@ A fonte oficial consultada é o resumo NREL/FS-7A40-68281. Como o terminal do am
 - [RAG e fontes](docs/RAG.md)
 - [Guardrails e juiz](docs/GUARDRAILS_AND_JUDGE.md)
 - [MCP](docs/MCP.md)
+- [A2A](docs/A2A.md)
+- [Autenticação](docs/AUTHENTICATION.md)
 - [Observabilidade, custos e ROI](docs/OBSERVABILITY.md)
 - [Privacidade e retenção](docs/PRIVACY.md)
 - [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
