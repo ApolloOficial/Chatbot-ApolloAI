@@ -1,21 +1,46 @@
-# ApolloAI
+# ☀️ ApolloAI
+
+<p align="center">
+  <strong>Inteligência multiagente para orientação segura sobre ativos fotovoltaicos</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ApolloOficial/Chatbot-ApolloAI/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ApolloOficial/Chatbot-ApolloAI/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Python 3.13" src="https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white">
+  <img alt="Flask" src="https://img.shields.io/badge/Flask-3.x-000000?logo=flask&logoColor=white">
+  <img alt="LangGraph" src="https://img.shields.io/badge/LangGraph-Multiagente-1C3C3C">
+  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-8-47A248?logo=mongodb&logoColor=white">
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white">
+</p>
+
+<p align="center">
+  <a href="#arquitetura">Arquitetura</a> •
+  <a href="#configuracao">Configuração</a> •
+  <a href="#api">API</a> •
+  <a href="#testes">Testes</a> •
+  <a href="#documentacao">Documentação</a>
+</p>
+
+---
 
 ApolloAI é o módulo de inteligência artificial do Apollo para orientação de Técnicos de Manutenção de ativos fotovoltaicos. A API Flask recebe pergunta e contexto já coletado pelo aplicativo mobile, executa um grafo multiagente e devolve uma resposta fundamentada. Ela não aciona câmera, não lê barcode, não ativa placas, não registra manutenção e não acessa o PostgreSQL operacional do Apollo.
 
-## Arquitetura
+<a id="arquitetura"></a>
 
-- Flask com application factory, Blueprints, Pydantic, CORS e OpenAPI;
-- sete papéis de agente criados com LangChain e orquestrados por LangGraph;
-- fluxo `guardrail de entrada → roteador → especialista → juiz factual → orquestrador → guardrail de saída`;
-- RAG local persistente com embeddings por feature hashing e metadados de documento, seção e página quando disponível;
-- servidor e cliente MCP reais para as três ferramentas de conhecimento solar;
-- MongoDB para sessões, mensagens, resumos, memória longa e observabilidade;
-- Redis obrigatório no ambiente acadêmico para ranking e fila, nunca como única cópia do histórico;
-- métricas Prometheus, cenários de custos e ROI configuráveis.
+## 🧩 Arquitetura
+
+- 🌶️ **API:** Flask com Application Factory, Blueprints, Pydantic, CORS e OpenAPI;
+- 🤖 **Multiagentes:** sete papéis criados com LangChain e orquestrados por LangGraph;
+- 🛡️ **Fluxo seguro:** `guardrail de entrada → roteador → especialista → juiz factual → orquestrador → guardrail de saída`;
+- 📚 **RAG:** índice local persistente, busca híbrida e metadados de fonte;
+- 🔌 **Integrações:** MCP para ferramentas e A2A 1.0 para comunicação entre agentes;
+- 🍃 **Memória:** MongoDB para sessões, mensagens, resumos e observabilidade;
+- ⚡ **Tempo real:** Redis para ranking e fila, sem substituir o histórico persistente;
+- 📊 **SRE:** Prometheus, latência, erros, custos estimados e ROI configurável.
 
 O diagrama Mermaid e as fronteiras estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Requisitos
+## 🛠️ Requisitos
 
 - Python 3.11 a 3.13 recomendado;
 - MongoDB 7 ou 8;
@@ -24,7 +49,9 @@ O diagrama Mermaid e as fronteiras estão em [docs/ARCHITECTURE.md](docs/ARCHITE
 
 O ambiente de avaliação usou Python 3.14; os testes passaram, embora o LangChain tenha emitido um aviso de compatibilidade legado do Pydantic nessa versão. A imagem Docker usa Python 3.13.
 
-## Configuração local
+<a id="configuracao"></a>
+
+## ⚙️ Configuração local
 
 ```bash
 python -m venv .venv
@@ -64,7 +91,7 @@ flask --app wsgi run --debug
 
 Acesse `http://localhost:5000/docs` para o Swagger UI, `http://localhost:5000/openapi.json` para o contrato e `/` para a interface local de testes. O aplicativo mobile Apollo continua sendo o cliente oficial.
 
-## Produção
+## 🚀 Produção
 
 Em Linux ou no container:
 
@@ -80,7 +107,9 @@ docker compose up --build
 
 O `compose.yaml` contém somente ApolloAI, MongoDB e Redis; não há serviço PostgreSQL.
 
-## Contrato HTTP
+<a id="api"></a>
+
+## 🌐 Contrato HTTP
 
 ```http
 POST /chat
@@ -121,7 +150,9 @@ Outros endpoints:
 - `GET /metrics`: formato Prometheus, sem PII;
 - `GET /openapi.json` e `GET /docs`: documentação da API.
 
-## Testes
+<a id="testes"></a>
+
+## 🧪 Testes
 
 Não são realizadas chamadas pagas nem gravações externas:
 
@@ -142,25 +173,27 @@ No Linux/macOS:
 RUN_MCP_INTEGRATION=1 python -m pytest -q -p no:cacheprovider tests/test_mcp_integration.py
 ```
 
-## Fonte técnica atual
+## 📖 Fonte técnica atual
 
 A fonte oficial consultada é o resumo NREL/FS-7A40-68281. Como o terminal do ambiente de implementação não conseguiu resolver o domínio para baixar o binário, o índice atual usa uma síntese técnica curada e parafraseada, rastreada até a URL oficial. Isso não é apresentado como o PDF original. O pipeline aceita PDFs e preserva número de página quando um PDF real é adicionado. Consulte [data/solar/fontes.md](data/solar/fontes.md) e [docs/RAG.md](docs/RAG.md).
 
-## Documentação
+<a id="documentacao"></a>
 
-- [Agentes](docs/AGENTS.md)
-- [MongoDB e memória](docs/MONGODB.md)
-- [RAG e fontes](docs/RAG.md)
-- [Guardrails e juiz](docs/GUARDRAILS_AND_JUDGE.md)
-- [MCP](docs/MCP.md)
-- [A2A](docs/A2A.md)
-- [Autenticação](docs/AUTHENTICATION.md)
-- [Implantação](docs/DEPLOYMENT.md)
-- [Observabilidade, custos e ROI](docs/OBSERVABILITY.md)
-- [Privacidade e retenção](docs/PRIVACY.md)
-- [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
+## 🗂️ Documentação
 
-## Limitações reais
+- 🤖 [Agentes](docs/AGENTS.md)
+- 🍃 [MongoDB e memória](docs/MONGODB.md)
+- 📚 [RAG e fontes](docs/RAG.md)
+- 🛡️ [Guardrails e juiz](docs/GUARDRAILS_AND_JUDGE.md)
+- 🔌 [MCP](docs/MCP.md)
+- 🤝 [A2A](docs/A2A.md)
+- 🔐 [Autenticação](docs/AUTHENTICATION.md)
+- 🚀 [Implantação](docs/DEPLOYMENT.md)
+- 📊 [Observabilidade, custos e ROI](docs/OBSERVABILITY.md)
+- 🔏 [Privacidade e retenção](docs/PRIVACY.md)
+- ✅ [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
+
+## ⚠️ Limitações reais
 
 - respostas de produção dependem de MongoDB e de um provedor de IA configurado;
 - Redis indisponível não apaga o histórico, mas deixa `/health` degradado quando `REDIS_REQUIRED=true`;
