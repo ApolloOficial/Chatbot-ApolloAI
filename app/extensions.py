@@ -6,7 +6,7 @@ from flask import Flask
 
 
 def init_extensions(app: Flask) -> None:
-    """Registra serviços com construção preguiçosa para não bloquear o startup."""
+    """Registra serviços com inicialização sob demanda para não bloquear o startup."""
     from app.services.metrics import MetricsRegistry
 
     app.extensions["metrics"] = MetricsRegistry()

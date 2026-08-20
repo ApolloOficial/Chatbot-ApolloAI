@@ -1,4 +1,4 @@
-"""Construção preguiçosa de modelos e agentes LangChain."""
+"""Inicialização sob demanda de modelos e agentes LangChain."""
 
 from __future__ import annotations
 
