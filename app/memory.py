@@ -47,7 +47,6 @@ class MongoMemoryRepository:
         self.db = self.client[database]
         self.sessions = self.db["sessions"]
         self.messages = self.db["messages"]
-        self.long_term = self.db["long_term_memories"]
         self.summaries = self.db["summaries"]
         self.observability = self.db["observability"]
         self.summary_after = summary_after
@@ -72,7 +71,6 @@ class MongoMemoryRepository:
             self.sessions.create_index("updated_at")
             self.messages.create_index([("user_id", ASCENDING), ("session_id", ASCENDING), ("created_at", ASCENDING)])
             self.messages.create_index("expires_at", expireAfterSeconds=0)
-            self.long_term.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
             self.summaries.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
             self.observability.create_index("created_at")
             self._indexes_ready = True
@@ -156,11 +154,11 @@ class MongoMemoryRepository:
         except PyMongoError as error:
             self._raise(error)
 
-    def maybe_summarize(self, user_id: str, session_id: str) -> None:
+    def maybe_summarize(self, user_id: str, session_id: str, force: bool = False) -> None:
         try:
             session = self.sessions.find_one({"user_id": user_id, "session_id": session_id}) or {}
             count = int(session.get("message_count", 0))
-            if count == 0 or count % self.summary_after:
+            if count == 0 or (not force and count % self.summary_after):
                 return
             messages = list(self.messages.find(
                 {"user_id": user_id, "session_id": session_id}, {"role": 1, "content": 1}
@@ -179,7 +177,7 @@ class MongoMemoryRepository:
             self._raise(error)
 
     def close_session(self, user_id: str, session_id: str) -> None:
-        self.maybe_summarize(user_id, session_id)
+        self.maybe_summarize(user_id, session_id, force=True)
         try:
             self.sessions.update_one(
                 {"user_id": user_id, "session_id": session_id},

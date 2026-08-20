@@ -36,6 +36,18 @@ class ChatRequest(BaseModel):
         return value
 
 
+class SessionCloseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    user_id: str = Field(min_length=3, max_length=128, pattern=r"^[A-Za-z0-9_.:@-]+$")
+
+    @field_validator("user_id")
+    @classmethod
+    def reject_direct_personal_identifier(cls, value: str) -> str:
+        if "@" in value and "." in value.split("@")[-1]:
+            raise ValueError("Use um identificador pseudonimizado, não um e-mail.")
+        return value
+
+
 class SourceReference(BaseModel):
     documento: str
     pagina: int | None = None

@@ -43,3 +43,19 @@ def test_observability_has_no_user_or_session(client, payload, app_bundle):
     record = app_bundle[1].observability.find_one()
     assert "user_id" not in record and "session_id" not in record
     assert "question" not in record and "answer" not in record
+
+
+def test_closing_session_forces_long_term_summary(client, payload, app_bundle):
+    client.post("/chat", json=payload)
+    response = client.post(f"/sessions/{payload['session_id']}/close", json={"user_id": payload["user_id"]})
+    assert response.status_code == 200
+    session = app_bundle[1].sessions.find_one({"session_id": payload["session_id"]})
+    assert session["status"] == "encerrada"
+    assert session["summary"]
+    assert app_bundle[1].summaries.count_documents({"session_id": payload["session_id"]}) == 1
+
+
+def test_other_user_cannot_close_session(client, payload):
+    client.post("/chat", json=payload)
+    response = client.post(f"/sessions/{payload['session_id']}/close", json={"user_id": "outro-tecnico"})
+    assert response.status_code == 403
