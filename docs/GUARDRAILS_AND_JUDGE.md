@@ -1,6 +1,6 @@
 # Guardrails e juiz factual
 
-O guardrail de entrada aplica verificações baratas primeiro: prompt injection, acesso a dados internos, ofensa, prática perigosa e temas explicitamente fora do escopo. Em mensagens restantes, o modelo faz classificação semântica. Saudações, agradecimentos e perguntas legítimas de segurança são permitidos. Bloqueios terminam sem especialistas.
+O guardrail de entrada aplica verificações baratas primeiro: prompt injection, acesso a dados internos, ofensa e prática perigosa. Em seguida, saudações, agradecimentos, despedidas e interações sociais breves recebem uma resposta educada pela rota `faq_apolloai`, sem depender do classificador semântico. A correspondência exige que toda a mensagem seja social; por isso, começar uma tentativa de injeção ou um comando perigoso com “oi” não contorna as verificações. Temas explicitamente fora do escopo continuam bloqueados e as demais mensagens passam pela classificação semântica. Perguntas legítimas de segurança são permitidas.
 
 O juiz recebe rascunho e exatamente as fontes recuperadas. Sua decisão Pydantic contém aprovação/correção/rejeição, fundamentação, segurança, escopo, validade das fontes, possível hipótese tratada como diagnóstico, motivos e eventual resposta corrigida. Decisão inválida falha de modo fechado. Toda rota técnica sem fontes é rejeitada deterministicamente.
 
