@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 
 def ask(client, payload, question):
     return client.post("/chat", json={**payload, "pergunta": question})
@@ -49,6 +51,16 @@ def test_greeting_is_allowed(client, payload):
     response = ask(client, payload, "Olá ApolloAI")
     assert response.json["status"] == "sucesso"
     assert response.json["rota"] == "faq_apolloai"
+
+
+@pytest.mark.parametrize("message", ["Oi", "Bom dia!", "Tudo bem?", "Valeu", "Até mais"])
+def test_brief_social_interaction_receives_friendly_faq_response(client, payload, message):
+    response = ask(client, payload, message)
+
+    assert response.status_code == 200
+    assert response.json["status"] == "sucesso"
+    assert response.json["rota"] == "faq_apolloai"
+    assert response.json["motivo_bloqueio"] is None
 
 
 def test_generic_out_of_scope_is_refused_after_router(client, payload):
