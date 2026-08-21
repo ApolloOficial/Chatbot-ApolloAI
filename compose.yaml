@@ -4,28 +4,17 @@ services:
     ports:
       - "5000:5000"
     environment:
-      MONGODB_URI: mongodb://mongo:27017
-      MONGODB_DATABASE: apollo_ai
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-apollo_ai}
+      MONGODB_TIMEOUT_MS: ${MONGODB_TIMEOUT_MS:-10000}
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:5000
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       APOLLOAI_API_TOKEN: ${APOLLOAI_API_TOKEN:-}
     depends_on:
-      mongo:
-        condition: service_healthy
       redis:
         condition: service_healthy
-
-  mongo:
-    image: mongo:8
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping:1}).ok"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -39,5 +28,4 @@ services:
       retries: 10
 
 volumes:
-  mongo_data:
   redis_data:
