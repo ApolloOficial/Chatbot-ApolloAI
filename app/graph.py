@@ -41,6 +41,7 @@ class GraphState(TypedDict, total=False):
     final_answer: str
     safety_alert: str | None
     agent_latencies_ms: dict[str, float]
+    social_interaction: bool
 
 
 def _json_object(text: str) -> dict[str, Any]:
@@ -94,7 +95,20 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
     def guard_input(state: GraphState) -> GraphState:
         result = input_guardrail(state["question"], runtime.classify_input)
         if not result.blocked:
-            return {"blocked": False, "agents_called": [], "agent_latencies_ms": {}}
+            approved = {"blocked": False, "agents_called": [], "agent_latencies_ms": {}}
+            if result.response:
+                metrics.routes.labels("faq_apolloai").inc()
+                return {
+                    **approved,
+                    "social_interaction": True,
+                    "route": "faq_apolloai",
+                    "status": "sucesso",
+                    "final_answer": result.response,
+                    "sources": [],
+                    "judge_decision": {},
+                    "safety_alert": None,
+                }
+            return approved
         metrics.blocked.labels(result.category.lower()).inc()
         return {
             "blocked": True, "block_reason": result.category.lower(), "route": "fora_escopo",
@@ -103,7 +117,9 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
         }
 
     def after_guard(state: GraphState) -> str:
-        return "blocked" if state.get("blocked") else "router"
+        if state.get("blocked"):
+            return "blocked"
+        return "social" if state.get("social_interaction") else "router"
 
     def router(state: GraphState) -> GraphState:
         content = f"MENSAGEM ORIGINAL:\n{state['question']}\n\nCONTEXTO FORNECIDO:\n{json.dumps(state.get('context', {}), ensure_ascii=False)}"
@@ -199,7 +215,9 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
     graph.add_node("orquestrador", orchestrator)
     graph.add_node("guardrail_saida", guard_output)
     graph.set_entry_point("guardrail_entrada")
-    graph.add_conditional_edges("guardrail_entrada", after_guard, {"blocked": END, "router": "roteador"})
+    graph.add_conditional_edges(
+        "guardrail_entrada", after_guard, {"blocked": END, "social": END, "router": "roteador"},
+    )
     graph.add_conditional_edges("roteador", choose_specialist, {route: route for route in VALID_ROUTES})
     for route in ("ativos_solares", "manutencao", "seguranca", "faq_apolloai"):
         graph.add_edge(route, "juiz_factual")

@@ -33,6 +33,21 @@ _DANGEROUS = (
     "trabalhar energizado", "sem epi", "ignorar epi", "burlar bloqueio", "sem bloquear",
     "desativar protecao", "desativar proteção", "confirmar sem medir", "curto-circuitar",
 )
+_SOCIAL_PATTERNS = {
+    "saudacao": (
+        r"(?:oi+|ola|bom dia|boa tarde|boa noite|e ai)"
+        r"(?:\s+(?:apolloai|apollo ai))?(?:\s+(?:tudo bem|como vai))?"
+    ),
+    "conversa": r"(?:tudo bem|como vai|como voce esta)(?:\s+(?:apolloai|apollo ai))?",
+    "agradecimento": r"(?:obrigad[oa]|muito obrigad[oa]|valeu|agradeco)(?:\s+pela ajuda)?",
+    "despedida": r"(?:tchau|ate logo|ate mais|ate a proxima)",
+}
+_SOCIAL_RESPONSES = {
+    "saudacao": "Olá! Sou o ApolloAI. Como posso ajudar com ativos fotovoltaicos, manutenção ou segurança?",
+    "conversa": "Tudo bem por aqui! Como posso ajudar com ativos fotovoltaicos, manutenção ou segurança?",
+    "agradecimento": "Por nada! Se precisar, posso continuar ajudando com ativos fotovoltaicos, manutenção ou segurança.",
+    "despedida": "Até mais! Quando precisar, estarei aqui para ajudar com segurança.",
+}
 _BLOCK_RESPONSES = {
     "OFENSIVO": "Para continuar, mantenha uma comunicação respeitosa. Posso ajudar com dúvidas sobre ativos fotovoltaicos e manutenção.",
     "FORA_ESCOPO": "O ApolloAI atende somente a dúvidas relacionadas a ativos fotovoltaicos e manutenção. Posso ajudar com alguma questão técnica sobre sistemas solares?",
@@ -48,6 +63,16 @@ def normalize(text: str) -> str:
     return "".join(char for char in decomposed if not unicodedata.combining(char))
 
 
+def brief_social_response(message: str) -> str | None:
+    """Responde somente a interações sociais curtas, sem engolir perguntas ou comandos."""
+    normalized = re.sub(r"[^a-z0-9\s]", " ", normalize(message))
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    for intent, pattern in _SOCIAL_PATTERNS.items():
+        if re.fullmatch(pattern, normalized):
+            return _SOCIAL_RESPONSES[intent]
+    return None
+
+
 def input_guardrail(message: str, semantic_classifier=None) -> GuardrailResult:
     normalized = normalize(message)
     if any(re.search(pattern, normalized, re.I) for pattern in _INJECTION):
@@ -58,6 +83,9 @@ def input_guardrail(message: str, semantic_classifier=None) -> GuardrailResult:
         return _blocked("OFENSIVO")
     if any(normalize(term) in normalized for term in _DANGEROUS):
         return _blocked("PERIGOSO")
+    social_response = brief_social_response(message)
+    if social_response:
+        return GuardrailResult("APROVADO", False, social_response)
     if any(normalize(term) in normalized for term in _OUT_OF_SCOPE):
         return _blocked("FORA_ESCOPO")
     if semantic_classifier:
