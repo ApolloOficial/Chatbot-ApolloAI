@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from app.config import Config
 from app.services.rag import SolarKnowledgeBase
 
@@ -14,6 +16,34 @@ def test_rag_returns_real_source():
 def test_rag_returns_empty_for_unrelated_content():
     knowledge = SolarKnowledgeBase.from_config(Config.__dict__)
     assert knowledge.retrieve("receita culinária de bolo de chocolate") == []
+
+
+def test_rag_retrieves_iea_pdf_from_portuguese_query():
+    knowledge = SolarKnowledgeBase.from_config(Config.__dict__)
+    results = knowledge.retrieve("Como avaliar degradação e modos de falha em módulos fotovoltaicos?")
+
+    assert results
+    assert results[0]["documento"] == "IEA-PVPS-T13-30-2025-REPORT-Degradation-and-Failure.pdf"
+    assert results[0]["pagina"] is not None
+
+
+def test_rag_persists_sparse_embeddings(tmp_path):
+    documents = tmp_path / "documentos"
+    documents.mkdir()
+    (documents / "fonte.md").write_text(
+        "Photovoltaic module degradation and failure modes support preventive maintenance.",
+        encoding="utf-8",
+    )
+    index_path = tmp_path / "indice.json"
+    knowledge = SolarKnowledgeBase(documents, index_path)
+
+    assert knowledge.index_all() == 1
+    payload = json.loads(index_path.read_text(encoding="utf-8"))
+    embedding = payload["chunks"][0]["embedding"]
+
+    assert payload["version"] == 3
+    assert payload["embedding"] == "signed_feature_hashing_sparse_v1"
+    assert len(embedding) < knowledge.dimensions // 10
 
 
 def test_no_source_yields_insufficiency(client, payload):
