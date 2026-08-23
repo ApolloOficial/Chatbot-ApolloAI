@@ -99,21 +99,21 @@ Em Linux ou no container:
 gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 90 "wsgi:app"
 ```
 
-Com MongoDB Atlas, preencha `MONGODB_URI` no `.env` e execute:
+Com MongoDB Atlas e Redis Cloud, preencha `MONGODB_URI` e `REDIS_URL` no `.env` e execute:
 
 ```bash
 docker compose up --build
 ```
 
-Nesse modo, o container do ApolloAI acessa o cluster remoto e apenas o Redis é executado localmente. Autorize o IP público da sua rede em **Network Access** no Atlas.
+Nesse modo, o container do ApolloAI acessa os dois serviços gerenciados; nenhum banco é iniciado localmente. Autorize a rede de saída da aplicação no Atlas e no provedor Redis.
 
-Para executar também o MongoDB localmente, use a configuração complementar:
+Para executar MongoDB e Redis localmente, use a configuração complementar:
 
 ```bash
 docker compose -f compose.yaml -f compose.local.yaml up --build
 ```
 
-O `compose.local.yaml` substitui a URI do Atlas por `mongodb://mongo:27017` e adiciona o serviço MongoDB. Nenhuma das configurações utiliza PostgreSQL.
+O `compose.local.yaml` substitui as duas URIs e adiciona os serviços MongoDB e Redis. Nenhuma das configurações utiliza PostgreSQL.
 
 <a id="api"></a>
 

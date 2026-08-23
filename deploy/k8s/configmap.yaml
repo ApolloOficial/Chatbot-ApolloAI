@@ -7,6 +7,7 @@ data:
   MONGODB_REQUIRED: "true"
   REDIS_ENABLED: "true"
   REDIS_REQUIRED: "true"
+  REDIS_TIMEOUT_SECONDS: "5"
   MCP_REQUIRED: "true"
   MCP_SERVER_COMMAND: "python -m app.mcp_server"
   PUBLIC_BASE_URL: "https://apolloai.example.invalid"

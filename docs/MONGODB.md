@@ -19,9 +19,9 @@ O `compose.yaml` lê `MONGODB_URI`, `MONGODB_DATABASE` e `MONGODB_TIMEOUT_MS` do
 docker compose up --build
 ```
 
-Nesse modo, MongoDB permanece remoto e Redis é executado em um container local.
+Nesse modo, MongoDB e Redis permanecem remotos.
 
-Para desenvolvimento totalmente local, a configuração complementar adiciona um container MongoDB e substitui a URI da aplicação:
+Para desenvolvimento totalmente local, a configuração complementar adiciona containers MongoDB e Redis e substitui as URIs da aplicação:
 
 ```bash
 docker compose -f compose.yaml -f compose.local.yaml up --build

@@ -2,7 +2,7 @@
 
 ## Stack local
 
-`docker compose up --build` inicia ApolloAI, MongoDB e Redis. `/live` verifica somente o processo Flask/Gunicorn; `/health` verifica MongoDB, Redis, RAG e o handshake MCP real.
+`docker compose up --build` inicia o ApolloAI usando MongoDB e Redis remotos definidos no `.env`. Para uma pilha isolada com os dois bancos locais, use `docker compose -f compose.yaml -f compose.local.yaml up --build`. `/live` verifica somente o processo Flask/Gunicorn; `/health` verifica MongoDB, Redis, RAG e o handshake MCP real.
 
 ## Kubernetes e cloud
 

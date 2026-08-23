@@ -8,20 +8,25 @@ logger = logging.getLogger(__name__)
 
 
 class RedisSupport:
-    def __init__(self, url: str, enabled: bool = True) -> None:
+    def __init__(self, url: str, enabled: bool = True, timeout_seconds: float = 5) -> None:
         self.enabled = enabled
         self._client = None
         if enabled:
             try:
                 import redis
 
-                self._client = redis.Redis.from_url(url, socket_connect_timeout=0.5, socket_timeout=0.5, decode_responses=True)
+                self._client = redis.Redis.from_url(
+                    url,
+                    socket_connect_timeout=timeout_seconds,
+                    socket_timeout=timeout_seconds,
+                    decode_responses=True,
+                )
             except Exception as error:
                 logger.warning("redis_configuracao_indisponivel", extra={"error_type": type(error).__name__})
 
     @classmethod
     def from_config(cls, config):
-        return cls(config["REDIS_URL"], config["REDIS_ENABLED"])
+        return cls(config["REDIS_URL"], config["REDIS_ENABLED"], config["REDIS_TIMEOUT_SECONDS"])
 
     def health(self) -> str:
         if not self.enabled:

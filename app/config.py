@@ -37,6 +37,7 @@ class Config:
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() == "true"
     REDIS_REQUIRED = os.getenv("REDIS_REQUIRED", "true").lower() == "true"
+    REDIS_TIMEOUT_SECONDS = float(os.getenv("REDIS_TIMEOUT_SECONDS", "5"))
 
     AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
     AI_MODEL = os.getenv("AI_MODEL", "openai/gpt-oss-120b")
