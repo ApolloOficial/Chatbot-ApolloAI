@@ -202,12 +202,15 @@ O corpus reúne a síntese curada NREL/FS-7A40-68281 e 19 PDFs originais da IEA 
 - 🔏 [Privacidade e retenção](docs/PRIVACY.md)
 - ✅ [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
 
-## ⚠️ Limitações reais
+## 🛡️ Princípios de operação
 
-- respostas de produção dependem de MongoDB e de um provedor de IA configurado;
-- Redis indisponível não apaga o histórico, mas deixa `/health` degradado quando `REDIS_REQUIRED=true`;
-- a qualidade do RAG está limitada às fontes efetivamente indexadas;
-- as publicações NREL e IEA PVPS não substituem manuais, normas, inspeções ou procedimentos internos;
-- o Swagger UI carrega seus arquivos visuais de CDN, enquanto `/openapi.json` funciona localmente;
-- o custo é estimado por contagem aproximada de tokens; preço e valor de tempo precisam ser configurados;
-- ApolloAI não observa o equipamento e não produz diagnóstico confirmado.
+O ApolloAI foi projetado para apoiar decisões técnicas com segurança, rastreabilidade e responsabilidade operacional:
+
+- **Respostas fundamentadas:** orientações técnicas são vinculadas às fontes recuperadas pelo RAG, com documento e página;
+- **Decisão assistida:** o chatbot organiza evidências e próximos passos, preservando a autoridade de manuais, normas, medições e procedimentos internos;
+- **Memória confiável:** MongoDB mantém sessões e histórico persistente, enquanto Redis oferece recursos complementares de baixa latência;
+- **Segurança por padrão:** guardrails, juiz factual, identidade pseudonimizada e isolamento de sessões protegem o fluxo conversacional;
+- **Operação observável:** endpoints de saúde, métricas Prometheus e registros estruturados permitem acompanhar dependências, latência, erros e custos estimados;
+- **Integração controlada:** autenticação serviço-a-serviço e HTTPS mantêm credenciais fora do aplicativo mobile.
+
+Os critérios de homologação, implantação e go-live estão documentados no [checklist de integração mobile](docs/MOBILE_INTEGRATION.md).
