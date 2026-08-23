@@ -181,9 +181,9 @@ No Linux/macOS:
 RUN_MCP_INTEGRATION=1 python -m pytest -q -p no:cacheprovider tests/test_mcp_integration.py
 ```
 
-## 📖 Fonte técnica atual
+## 📖 Fontes técnicas atuais
 
-A fonte oficial consultada é o resumo NREL/FS-7A40-68281. Como o terminal do ambiente de implementação não conseguiu resolver o domínio para baixar o binário, o índice atual usa uma síntese técnica curada e parafraseada, rastreada até a URL oficial. Isso não é apresentado como o PDF original. O pipeline aceita PDFs e preserva número de página quando um PDF real é adicionado. Consulte [data/solar/fontes.md](data/solar/fontes.md) e [docs/RAG.md](docs/RAG.md).
+O corpus reúne a síntese curada NREL/FS-7A40-68281 e 19 PDFs originais da IEA PVPS sobre desempenho, manutenção, degradação, falhas, clima, agrivoltaicos, sistemas flutuantes, PV+BESS, sustentabilidade e ciclo de vida. O pipeline preserva documento e página e aceita consultas técnicas em português sobre as fontes em inglês. Consulte [data/solar/fontes.md](data/solar/fontes.md) e [docs/RAG.md](docs/RAG.md).
 
 <a id="documentacao"></a>
 
@@ -206,7 +206,7 @@ A fonte oficial consultada é o resumo NREL/FS-7A40-68281. Como o terminal do am
 - respostas de produção dependem de MongoDB e de um provedor de IA configurado;
 - Redis indisponível não apaga o histórico, mas deixa `/health` degradado quando `REDIS_REQUIRED=true`;
 - a qualidade do RAG está limitada às fontes efetivamente indexadas;
-- a síntese NREL atual é curta e não substitui manuais, normas ou procedimentos internos;
+- as publicações NREL e IEA PVPS não substituem manuais, normas, inspeções ou procedimentos internos;
 - o Swagger UI carrega seus arquivos visuais de CDN, enquanto `/openapi.json` funciona localmente;
 - o custo é estimado por contagem aproximada de tokens; preço e valor de tempo precisam ser configurados;
 - ApolloAI não observa o equipamento e não produz diagnóstico confirmado.

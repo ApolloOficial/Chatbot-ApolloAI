@@ -32,6 +32,36 @@
       "relevant": true
     },
     {
+      "id": "iea-degradation-failure",
+      "query": "Como avaliar degradação e modos de falha em módulos fotovoltaicos?",
+      "expected_terms": ["degradation", "failure"],
+      "relevant": true
+    },
+    {
+      "id": "iea-floating-pv",
+      "query": "Quais aspectos de manutenção e confiabilidade existem em usinas fotovoltaicas flutuantes?",
+      "expected_terms": ["floating", "reliability", "maintenance"],
+      "relevant": true
+    },
+    {
+      "id": "iea-technical-economic-kpis",
+      "query": "Quais indicadores técnicos e econômicos avaliar em sistemas fotovoltaicos?",
+      "expected_terms": ["technical", "economic", "KPIs"],
+      "relevant": true
+    },
+    {
+      "id": "iea-agrivoltaics",
+      "query": "Como funciona o uso agrivoltaico da terra?",
+      "expected_terms": ["agrivoltaic"],
+      "relevant": true
+    },
+    {
+      "id": "iea-pv-bess",
+      "query": "Como avaliar confiabilidade de baterias BESS em sistemas fotovoltaicos?",
+      "expected_terms": ["reliability", "BESS"],
+      "relevant": true
+    },
+    {
       "id": "unrelated-recipe",
       "query": "Como preparar uma receita de bolo de chocolate?",
       "expected_terms": [],

@@ -25,6 +25,7 @@ def test_rag_retrieves_iea_pdf_from_portuguese_query():
     assert results
     assert results[0]["documento"] == "IEA-PVPS-T13-30-2025-REPORT-Degradation-and-Failure.pdf"
     assert results[0]["pagina"] is not None
+    assert results[0]["url"].startswith("https://iea-pvps.org/")
 
 
 def test_rag_persists_sparse_embeddings(tmp_path):

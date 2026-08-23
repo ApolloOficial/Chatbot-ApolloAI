@@ -10,7 +10,7 @@
 | Redis | ranking de rotas e fila de indexação degradáveis em `app/services/redis_service.py` |
 | MCP | servidor e cliente MCP stdio em `app/mcp_server.py` e `app/services/mcp_client.py`; teste real de handshake, catálogo e busca |
 | A2A | Agent Card e JSON-RPC `SendMessage` 1.0 em `app/a2a.py` e `app/routes/a2a.py` |
-| RAG com fonte externa | publicação NREL catalogada em `data/solar/fontes.md`; índice em `app/services/rag.py` |
+| RAG com fonte externa | NREL e 19 PDFs IEA PVPS catalogados em `data/solar/fontes.md`; índice em `app/services/rag.py` |
 | Juiz de alucinação | nó `juiz_factual` e decisão Pydantic no estado do grafo e MongoDB |
 | Guardrails | `app/guardrail.py`, antes do roteador e depois do orquestrador |
 | Observabilidade/SRE | Prometheus e coleção Mongo; detalhes em `docs/OBSERVABILITY.md` |

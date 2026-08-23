@@ -17,9 +17,31 @@ logger = logging.getLogger(__name__)
 
 INDEX_VERSION = 3
 
+TASK_13_URL = "https://iea-pvps.org/research-tasks/performance-operation-and-reliability-of-photovoltaic-systems/"
+TASK_12_URL = "https://iea-pvps.org/research-tasks/pv-sustainability/"
+
 SOURCE_URLS = {
     "nrel_pv_om_best_practices_fact_sheet.pdf": "https://www.nrel.gov/docs/fy17osti/68281.pdf",
     "nrel_pv_om_best_practices_sintese.md": "https://www.nrel.gov/docs/fy17osti/68281.pdf",
+    "FS-Climate-Optimisation-2025.pdf": "https://doi.org/10.69766/QSYC8858",
+    "IEA-PVPS-T13-2026-FS-Agrivoltaics.pdf": "https://iea-pvps.org/key-topics/dual-land-use-agriculture-solar-power-production/",
+    "IEA-PVPS-T13-27-2024.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-28-2024-REPORT-Technical-and-Economic-KPIs.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-29-2025-REPORT-Dual-Land-Use.pdf": "https://iea-pvps.org/key-topics/dual-land-use-agriculture-solar-power-production/",
+    "IEA-PVPS-T13-30-2025-PVFS-ANNEX-Degradation-and-Failure.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-30-2025-REPORT-Degradation-and-Failure.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-31-2025-REPORT-Floating-PV-Plants.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-32-2025-REPORT-Climate-Optimisation-2025.pdf": "https://doi.org/10.69766/QSYC8858",
+    "IEA-PVPS-T13-33-2025-REPORT-Extreme-Weather-Impacts.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-34-2026-REPORT-Digitalisation-Twins.pdf": "https://iea-pvps.org/key-topics/t13-digitalisation-twins-pv-systems-2026/",
+    "IEA-PVPS-T13-35-2026-REPORT-PV-BESS-2026.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-36-2026-REPORT-pv-project-decisions.pdf": "https://iea-pvps.org/key-topics/t13-pv-project-decisions-2026/",
+    "IEA-PVPS-T13-37-2026-REPORT-Second-Life-PV.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-39-2026-REPORT-Optimisation-PV.pdf": TASK_13_URL,
+    "IEA-PVPS-T13-40-2026-REPORT-Arctic-PV.pdf": "https://iea-pvps.org/key-topics/t13-security-greater-arctic-region-2026/",
+    "IEA_PVPS_T12_Preliminary-EnvEcon-Analysis-of-module-reuse_2021_report.pdf": TASK_12_URL,
+    "IEA_PVPS_Task12_Methodological_Guidelines_NEA_2021_report.pdf": TASK_12_URL,
+    "IEA_Task12_LCA_Guidelines.pdf": TASK_12_URL,
 }
 
 _QUERY_TRANSLATIONS = {
@@ -143,8 +165,11 @@ class SolarKnowledgeBase:
 
     def retrieve(self, query: str, route: str = "ativos_solares") -> list[dict[str, Any]]:
         del route
+        original_tokens = _tokens(query)
         query_tokens = _query_tokens(query)
+        original_vector = dict(_embed_tokens(original_tokens, self.dimensions))
         query_vector = dict(_embed_tokens(query_tokens, self.dimensions))
+        original_terms = set(original_tokens)
         query_terms = set(query_tokens)
         scored = []
         for chunk in self._load():
@@ -152,9 +177,17 @@ class SolarKnowledgeBase:
             intersection = query_terms.intersection(chunk_terms)
             if not intersection:
                 continue
-            vector_score = max(0.0, _dot(query_vector, chunk["embedding"]))
-            lexical_coverage = len(intersection) / max(len(query_terms), 1)
-            score = 0.75 * vector_score + 0.25 * lexical_coverage
+            original_intersection = original_terms.intersection(chunk_terms)
+            vector_score = max(
+                0.0,
+                _dot(original_vector, chunk["embedding"]),
+                _dot(query_vector, chunk["embedding"]),
+            )
+            lexical_coverage = max(
+                len(original_intersection) / max(len(original_terms), 1),
+                len(intersection) / max(len(query_terms), 1),
+            )
+            score = 0.6 * vector_score + 0.4 * lexical_coverage
             if score >= self.min_score:
                 public = {key: value for key, value in chunk.items() if key not in {"embedding", "id", "termos"}}
                 public["score"] = round(score, 4)
