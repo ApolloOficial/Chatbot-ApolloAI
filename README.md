@@ -197,6 +197,7 @@ O corpus reúne a síntese curada NREL/FS-7A40-68281 e 19 PDFs originais da IEA 
 - 🤝 [A2A](docs/A2A.md)
 - 🔐 [Autenticação](docs/AUTHENTICATION.md)
 - 🚀 [Implantação](docs/DEPLOYMENT.md)
+- 📱 [Integração com o aplicativo mobile](docs/MOBILE_INTEGRATION.md)
 - 📊 [Observabilidade, custos e ROI](docs/OBSERVABILITY.md)
 - 🔏 [Privacidade e retenção](docs/PRIVACY.md)
 - ✅ [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
