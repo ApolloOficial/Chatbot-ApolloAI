@@ -7,6 +7,7 @@ import json
 import logging
 import math
 import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -14,9 +15,42 @@ from pypdf import PdfReader
 
 logger = logging.getLogger(__name__)
 
+INDEX_VERSION = 3
+
 SOURCE_URLS = {
     "nrel_pv_om_best_practices_fact_sheet.pdf": "https://www.nrel.gov/docs/fy17osti/68281.pdf",
     "nrel_pv_om_best_practices_sintese.md": "https://www.nrel.gov/docs/fy17osti/68281.pdf",
+}
+
+_QUERY_TRANSLATIONS = {
+    "agrivoltaico": ("agrivoltaic", "agrivoltaics"),
+    "agrivoltaicos": ("agrivoltaic", "agrivoltaics"),
+    "avaliar": ("assess", "assessment", "evaluation"),
+    "bateria": ("battery", "bess"),
+    "baterias": ("batteries", "bess"),
+    "clima": ("climate",),
+    "confiabilidade": ("reliability",),
+    "degradacao": ("degradation",),
+    "desempenho": ("performance",),
+    "economico": ("economic",),
+    "economicos": ("economic",),
+    "falha": ("failure", "failures"),
+    "falhas": ("failure", "failures"),
+    "flutuante": ("floating",),
+    "fotovoltaico": ("photovoltaic", "pv"),
+    "fotovoltaicos": ("photovoltaic", "pv"),
+    "indicadores": ("indicators", "kpi", "kpis"),
+    "manutencao": ("maintenance",),
+    "modo": ("mode", "modes"),
+    "modos": ("mode", "modes"),
+    "modulo": ("module", "modules"),
+    "modulos": ("module", "modules"),
+    "otimizacao": ("optimisation", "optimization"),
+    "reuso": ("reuse", "second_life"),
+    "seguranca": ("safety",),
+    "sombreamento": ("shading", "shaded"),
+    "tecnico": ("technical",),
+    "tecnicos": ("technical",),
 }
 
 
@@ -47,7 +81,12 @@ class SolarKnowledgeBase:
                 chunks.extend(self._extract_pdf(document_path))
             else:
                 chunks.extend(self._extract_text(document_path))
-        payload = {"version": 2, "embedding": "signed_feature_hashing_v1", "dimensions": self.dimensions, "chunks": chunks}
+        payload = {
+            "version": INDEX_VERSION,
+            "embedding": "signed_feature_hashing_sparse_v1",
+            "dimensions": self.dimensions,
+            "chunks": chunks,
+        }
         self.index_path.parent.mkdir(parents=True, exist_ok=True)
         self.index_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         self._chunks = chunks
@@ -90,7 +129,7 @@ class SolarKnowledgeBase:
             self.index_all()
         try:
             payload = json.loads(self.index_path.read_text(encoding="utf-8"))
-            if payload.get("version") != 2 or payload.get("dimensions") != self.dimensions:
+            if payload.get("version") != INDEX_VERSION or payload.get("dimensions") != self.dimensions:
                 return self._reindex()
             self._chunks = payload["chunks"]
         except (OSError, KeyError, json.JSONDecodeError) as error:
@@ -104,8 +143,9 @@ class SolarKnowledgeBase:
 
     def retrieve(self, query: str, route: str = "ativos_solares") -> list[dict[str, Any]]:
         del route
-        query_vector = _embed(query, self.dimensions)
-        query_terms = set(_tokens(query))
+        query_tokens = _query_tokens(query)
+        query_vector = dict(_embed_tokens(query_tokens, self.dimensions))
+        query_terms = set(query_tokens)
         scored = []
         for chunk in self._load():
             chunk_terms = set(chunk.get("termos", []))
@@ -145,23 +185,38 @@ def _split(text: str, size: int = 1200, overlap: int = 200) -> Iterable[str]:
 
 def _tokens(text: str) -> list[str]:
     stopwords = {"a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em", "para", "por", "com", "um", "uma", "que", "ou", "no", "na"}
-    words = [word for word in re.findall(r"[a-zA-ZÀ-ÿ0-9]{2,}", text.lower()) if word not in stopwords]
+    decomposed = unicodedata.normalize("NFKD", text.casefold())
+    normalized = "".join(char for char in decomposed if not unicodedata.combining(char))
+    words = [word for word in re.findall(r"[a-z0-9]{2,}", normalized) if word not in stopwords]
     return words + [f"{a}_{b}" for a, b in zip(words, words[1:])]
 
 
-def _embed(text: str, dimensions: int) -> list[float]:
-    vector = [0.0] * dimensions
-    for token in _tokens(text):
+def _query_tokens(text: str) -> list[str]:
+    tokens = _tokens(text)
+    expanded = list(tokens)
+    for token in tokens:
+        expanded.extend(_QUERY_TRANSLATIONS.get(token, ()))
+    return expanded
+
+
+def _embed(text: str, dimensions: int) -> list[list[int | float]]:
+    return _embed_tokens(_tokens(text), dimensions)
+
+
+def _embed_tokens(tokens: list[str], dimensions: int) -> list[list[int | float]]:
+    vector: dict[int, float] = {}
+    for token in tokens:
         digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
         value = int.from_bytes(digest, "big")
         index = value % dimensions
-        vector[index] += 1.0 if value & 1 else -1.0
-    norm = math.sqrt(sum(item * item for item in vector)) or 1.0
-    return [round(item / norm, 7) for item in vector]
+        vector[index] = vector.get(index, 0.0) + (1.0 if value & 1 else -1.0)
+    vector = {index: value for index, value in vector.items() if value}
+    norm = math.sqrt(sum(item * item for item in vector.values())) or 1.0
+    return [[index, round(value / norm, 7)] for index, value in sorted(vector.items())]
 
 
-def _dot(left: list[float], right: list[float]) -> float:
-    return sum(a * b for a, b in zip(left, right))
+def _dot(left: dict[int, float], right: list[list[int | float]]) -> float:
+    return sum(left.get(int(index), 0.0) * float(value) for index, value in right)
 
 
 def _section(text: str) -> str | None:

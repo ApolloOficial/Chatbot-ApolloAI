@@ -11,6 +11,7 @@ RUN addgroup --system --gid 10001 apolloai \
 COPY --chown=apolloai:apolloai . .
 
 USER 10001:10001
+RUN python scripts/index_knowledge.py
 
 EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
