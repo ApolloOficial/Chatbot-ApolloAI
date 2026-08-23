@@ -23,7 +23,7 @@
 
 ---
 
-ApolloAI é o módulo de inteligência artificial do Apollo para orientação de Técnicos de Manutenção de ativos fotovoltaicos. A API Flask recebe pergunta e contexto já coletado pelo aplicativo mobile, executa um grafo multiagente e devolve uma resposta fundamentada. Ela não aciona câmera, não lê barcode, não ativa placas, não registra manutenção e não acessa o PostgreSQL operacional do Apollo.
+ApolloAI é o módulo de inteligência artificial do Apollo para orientação de Técnicos de Manutenção de ativos fotovoltaicos. A API Flask foi projetada para receber perguntas e o contexto coletado pelo aplicativo mobile, executar um grafo multiagente e devolver uma resposta fundamentada. Ela não aciona câmera, não lê barcode, não ativa placas, não registra manutenção e não acessa o PostgreSQL operacional do Apollo.
 
 <a id="arquitetura"></a>
 
@@ -73,7 +73,7 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Preencha apenas o provedor escolhido. Nunca versione `.env`. O ApolloAI não usa `DATABASE_URL` nem qualquer credencial PostgreSQL.
+Configure as URIs do MongoDB Atlas e do Redis Cloud e preencha apenas a chave do provedor de IA escolhido. Nunca versione `.env`. O ApolloAI não usa `DATABASE_URL` nem qualquer credencial PostgreSQL.
 
 Para Groq, o modelo padrão é `openai/gpt-oss-120b`. Se o seu `.env` definir `AI_MODEL`, use um identificador atualmente disponível para a sua conta.
 
@@ -86,10 +86,10 @@ python scripts/index_knowledge.py
 Inicie em desenvolvimento:
 
 ```bash
-flask --app wsgi run --debug
+python -m flask --app wsgi run --debug
 ```
 
-Acesse `http://localhost:5000/docs` para o Swagger UI, `http://localhost:5000/openapi.json` para o contrato e `/` para a interface local de testes. O aplicativo mobile Apollo continua sendo o cliente oficial.
+Acesse `http://localhost:5000/docs` para o Swagger UI, `http://localhost:5000/openapi.json` para o contrato e `/` para a interface local de testes. O aplicativo mobile Apollo é o cliente previsto para a integração oficial.
 
 ## 🚀 Produção
 
@@ -121,17 +121,21 @@ O `compose.local.yaml` substitui as duas URIs e adiciona os serviços MongoDB e 
 
 ```http
 POST /chat
+Authorization: Bearer <token-do-serviço>
+X-User-ID: tecnico-a8f3
 Content-Type: application/json
 ```
+
+Os headers de autenticação são obrigatórios quando `AUTH_REQUIRED=true`. O token pertence ao backend/gateway Apollo e nunca deve ser incluído no aplicativo mobile.
 
 ```json
 {
   "user_id": "tecnico-a8f3",
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "pergunta": "Qual a diferença entre manutenção preditiva e preventiva?",
+  "pergunta": "Como avaliar degradação e modos de falha em módulos fotovoltaicos?",
   "contexto": {
     "componente": "módulo fotovoltaico",
-    "sintoma": "redução de geração observada"
+    "sintoma": "degradação de desempenho observada"
   }
 }
 ```
@@ -141,9 +145,15 @@ Content-Type: application/json
   "session_id": "550e8400-e29b-41d4-a716-446655440000",
   "resposta": "...",
   "status": "sucesso",
-  "rota": "manutencao",
-  "agentes_chamados": ["roteador", "manutencao", "juiz_factual", "orquestrador"],
-  "fontes": [],
+  "rota": "ativos_solares",
+  "agentes_chamados": ["roteador", "ativos_solares", "juiz_factual", "orquestrador"],
+  "fontes": [
+    {
+      "documento": "IEA-PVPS-T13-30-2025-REPORT-Degradation-and-Failure.pdf",
+      "pagina": 10,
+      "url": "https://iea-pvps.org/research-tasks/performance-operation-and-reliability-of-photovoltaic-systems/"
+    }
+  ],
   "alerta_seguranca": null,
   "motivo_bloqueio": null
 }
@@ -211,6 +221,6 @@ O ApolloAI foi projetado para apoiar decisões técnicas com segurança, rastrea
 - **Memória confiável:** MongoDB mantém sessões e histórico persistente, enquanto Redis oferece recursos complementares de baixa latência;
 - **Segurança por padrão:** guardrails, juiz factual, identidade pseudonimizada e isolamento de sessões protegem o fluxo conversacional;
 - **Operação observável:** endpoints de saúde, métricas Prometheus e registros estruturados permitem acompanhar dependências, latência, erros e custos estimados;
-- **Integração controlada:** autenticação serviço-a-serviço e HTTPS mantêm credenciais fora do aplicativo mobile.
+- **Integração controlada:** a arquitetura recomendada usa autenticação serviço-a-serviço e HTTPS para manter credenciais fora do aplicativo mobile.
 
 Os critérios de homologação, implantação e go-live estão documentados no [checklist de integração mobile](docs/MOBILE_INTEGRATION.md).
