@@ -1,9 +1,8 @@
-"""Pipeline RAG local: PDF → chunks → embeddings → índice vetorial persistente."""
+"""Recuperação RAG a partir dos Markdown do corpus solar."""
 
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import math
 import re
@@ -11,17 +10,12 @@ import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
 
-from pypdf import PdfReader
-
 logger = logging.getLogger(__name__)
-
-INDEX_VERSION = 3
 
 TASK_13_URL = "https://iea-pvps.org/research-tasks/performance-operation-and-reliability-of-photovoltaic-systems/"
 TASK_12_URL = "https://iea-pvps.org/research-tasks/pv-sustainability/"
 
 SOURCE_URLS = {
-    "nrel_pv_om_best_practices_fact_sheet.pdf": "https://www.nrel.gov/docs/fy17osti/68281.pdf",
     "nrel_pv_om_best_practices_sintese.md": "https://www.nrel.gov/docs/fy17osti/68281.pdf",
     "FS-Climate-Optimisation-2025.pdf": "https://doi.org/10.69766/QSYC8858",
     "IEA-PVPS-T13-2026-FS-Agrivoltaics.pdf": "https://iea-pvps.org/key-topics/dual-land-use-agriculture-solar-power-production/",
@@ -77,123 +71,83 @@ _QUERY_TRANSLATIONS = {
 
 
 class SolarKnowledgeBase:
-    """Índice vetorial leve e reproduzível, sem API paga de embeddings."""
+    """Recuperação dos documentos indexados no Qdrant remoto."""
 
-    dimensions = 4096
-
-    def __init__(self, documents_dir: Path, index_path: Path, top_k: int = 5, min_score: float = 0.08):
+    def __init__(self, documents_dir: Path, top_k: int = 5, semantic_store=None):
         self.documents_dir = Path(documents_dir)
-        self.index_path = Path(index_path)
         self.top_k = top_k
-        self.min_score = min_score
-        self._chunks: list[dict[str, Any]] | None = None
+        self.semantic_store = semantic_store
 
     @classmethod
     def from_config(cls, config):
-        return cls(config["SOLAR_DOCUMENTS_DIR"], config["VECTOR_INDEX_PATH"], config["RAG_TOP_K"], config["RAG_MIN_SCORE"])
+        from app.qdrant_store import QdrantSemanticStore
+
+        return cls(config["SOLAR_DOCUMENTS_DIR"], config["RAG_TOP_K"], QdrantSemanticStore.from_config(config))
 
     @property
     def is_ready(self) -> bool:
-        return self.index_path.is_file() or any(self._document_paths())
+        return bool(self.semantic_store and self.semantic_store.is_ready())
 
-    def index_all(self) -> int:
-        chunks: list[dict[str, Any]] = []
-        for document_path in self._document_paths():
-            if document_path.suffix.lower() == ".pdf":
-                chunks.extend(self._extract_pdf(document_path))
-            else:
-                chunks.extend(self._extract_text(document_path))
-        payload = {
-            "version": INDEX_VERSION,
-            "embedding": "signed_feature_hashing_sparse_v1",
-            "dimensions": self.dimensions,
-            "chunks": chunks,
-        }
-        self.index_path.parent.mkdir(parents=True, exist_ok=True)
-        self.index_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        self._chunks = chunks
-        logger.info("rag_indexado", extra={"documents": len(self._document_paths()), "chunks": len(chunks)})
+    def index_qdrant(self, vector_store, batch_size: int = 50, on_progress=None) -> int:
+        """Lê os Markdown atuais e envia seus chunks ao Qdrant em lotes."""
+        if batch_size < 1:
+            raise ValueError("QDRANT_INDEX_BATCH_SIZE deve ser maior que zero.")
+        paths = self._document_paths(require_complete=True)
+        if not paths:
+            raise ValueError("Nenhum Markdown encontrado para indexação no Qdrant.")
+        chunks = [chunk for path in paths for chunk in self._extract_text(path)]
+        if not chunks:
+            raise ValueError("Os arquivos Markdown não produziram trechos para indexar.")
+        vector_store.ensure_collections()
+        vector_store.require_empty_collections()
+        for start in range(0, len(chunks), batch_size):
+            vector_store.upsert_document_chunks(chunks[start:start + batch_size])
+            if on_progress:
+                on_progress(min(start + batch_size, len(chunks)), len(chunks))
+        logger.info("rag_qdrant_indexado", extra={"chunks": len(chunks)})
         return len(chunks)
 
-    def _document_paths(self) -> list[Path]:
-        return sorted(path for path in self.documents_dir.iterdir() if path.suffix.lower() in {".pdf", ".md", ".txt"}) if self.documents_dir.is_dir() else []
-
-    def _extract_pdf(self, path: Path) -> list[dict[str, Any]]:
-        reader = PdfReader(str(path))
-        result = []
-        for page_number, page in enumerate(reader.pages, 1):
-            text = _clean(page.extract_text() or "")
-            for part_number, part in enumerate(_split(text), 1):
-                result.append({
-                    "id": f"{path.stem}-p{page_number}-c{part_number}",
-                    "documento": path.name, "pagina": page_number,
-                    "secao": _section(part), "url": SOURCE_URLS.get(path.name),
-                    "trecho": part, "termos": sorted(set(_tokens(part))),
-                    "embedding": _embed(part, self.dimensions),
-                })
-        return result
+    def _document_paths(self, require_complete: bool = False) -> list[Path]:
+        if not self.documents_dir.is_dir():
+            return []
+        markdown_dir = self.documents_dir / "markdown"
+        if require_complete:
+            missing = [path.name for path in self.documents_dir.glob("*.pdf")
+                       if not (markdown_dir / f"{path.stem}.md").is_file()]
+            if missing:
+                raise ValueError(f"Converta os PDFs para Markdown antes de indexar: {', '.join(sorted(missing))}")
+        return sorted(self.documents_dir.glob("*.md")) + sorted(markdown_dir.glob("*.md"))
 
     def _extract_text(self, path: Path) -> list[dict[str, Any]]:
         text = path.read_text(encoding="utf-8")
+        source_pdf = self.documents_dir / f"{path.stem}.pdf"
+        converted = path.parent == self.documents_dir / "markdown" and source_pdf.is_file()
+        document_name = source_pdf.name if converted else path.name
+        if converted:
+            parts = re.split(r"(?m)^## Página (\d+)\s*$", text)
+            if len(parts) < 3:
+                raise ValueError(f"Markdown convertido sem páginas: {path.name}")
+            pages = ((int(number), content) for number, content in zip(parts[1::2], parts[2::2]))
+        else:
+            pages = ((None, text),)
         result = []
-        for part_number, part in enumerate(_split(_clean(text)), 1):
-            result.append({
-                "id": f"{path.stem}-c{part_number}", "documento": path.name, "pagina": None,
-                "secao": _section(part), "url": SOURCE_URLS.get(path.name), "trecho": part,
-                "termos": sorted(set(_tokens(part))), "embedding": _embed(part, self.dimensions),
-            })
+        for page_number, content in pages:
+            for part_number, part in enumerate(_split(_clean(content)), 1):
+                chunk = {
+                    "id": f"{path.stem}-p{page_number}-c{part_number}" if page_number else f"{path.stem}-c{part_number}",
+                    "documento": document_name, "pagina": page_number,
+                    "secao": _section(part), "url": SOURCE_URLS.get(document_name), "trecho": part,
+                }
+                result.append(chunk)
         return result
-
-    def _load(self) -> list[dict[str, Any]]:
-        if self._chunks is not None:
-            return self._chunks
-        if not self.index_path.is_file():
-            self.index_all()
-        try:
-            payload = json.loads(self.index_path.read_text(encoding="utf-8"))
-            if payload.get("version") != INDEX_VERSION or payload.get("dimensions") != self.dimensions:
-                return self._reindex()
-            self._chunks = payload["chunks"]
-        except (OSError, KeyError, json.JSONDecodeError) as error:
-            logger.warning("rag_indice_invalido", extra={"error_type": type(error).__name__})
-            self.index_all()
-        return self._chunks or []
-
-    def _reindex(self) -> list[dict[str, Any]]:
-        self.index_all()
-        return self._chunks or []
 
     def retrieve(self, query: str, route: str = "ativos_solares") -> list[dict[str, Any]]:
         del route
-        original_tokens = _tokens(query)
-        query_tokens = _query_tokens(query)
-        original_vector = dict(_embed_tokens(original_tokens, self.dimensions))
-        query_vector = dict(_embed_tokens(query_tokens, self.dimensions))
-        original_terms = set(original_tokens)
-        query_terms = set(query_tokens)
-        scored = []
-        for chunk in self._load():
-            chunk_terms = set(chunk.get("termos", []))
-            intersection = query_terms.intersection(chunk_terms)
-            if not intersection:
-                continue
-            original_intersection = original_terms.intersection(chunk_terms)
-            vector_score = max(
-                0.0,
-                _dot(original_vector, chunk["embedding"]),
-                _dot(query_vector, chunk["embedding"]),
-            )
-            lexical_coverage = max(
-                len(original_intersection) / max(len(original_terms), 1),
-                len(intersection) / max(len(query_terms), 1),
-            )
-            score = 0.6 * vector_score + 0.4 * lexical_coverage
-            if score >= self.min_score:
-                public = {key: value for key, value in chunk.items() if key not in {"embedding", "id", "termos"}}
-                public["score"] = round(score, 4)
-                scored.append(public)
-        scored.sort(key=lambda item: item["score"], reverse=True)
-        return scored[: self.top_k]
+        if not self.semantic_store or not self.semantic_store.configured:
+            from app.qdrant_store import QdrantUnavailable
+
+            raise QdrantUnavailable("Qdrant remoto não configurado.")
+        return self.semantic_store.search_document_chunks(query, self.top_k)
 
 
 def _clean(text: str) -> str:
@@ -246,10 +200,6 @@ def _embed_tokens(tokens: list[str], dimensions: int) -> list[list[int | float]]
     vector = {index: value for index, value in vector.items() if value}
     norm = math.sqrt(sum(item * item for item in vector.values())) or 1.0
     return [[index, round(value / norm, 7)] for index, value in sorted(vector.items())]
-
-
-def _dot(left: dict[int, float], right: list[list[int | float]]) -> float:
-    return sum(left.get(int(index), 0.0) * float(value) for index, value in right)
 
 
 def _section(text: str) -> str | None:

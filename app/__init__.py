@@ -9,7 +9,7 @@ from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from pydantic import ValidationError
 
-from app.config import Config
+from app.config import Config, validate_remote_config
 from app.extensions import init_extensions
 from app.routes import register_blueprints
 
@@ -22,6 +22,7 @@ def create_app(config: type[Config] | dict | None = None) -> Flask:
         app.config.update(config)
     elif config is not None:
         app.config.from_object(config)
+    validate_remote_config(app.config)
 
     logging.basicConfig(
         level=app.config["LOG_LEVEL"],
@@ -31,7 +32,7 @@ def create_app(config: type[Config] | dict | None = None) -> Flask:
         app,
         origins=app.config["CORS_ORIGINS"],
         methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-User-ID", "A2A-Version"],
     )
     init_extensions(app)
     register_blueprints(app)

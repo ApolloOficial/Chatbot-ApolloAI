@@ -1,5 +1,22 @@
 from __future__ import annotations
 
+import mongomock
+
+from app.memory import MongoMemoryRepository
+
+
+class FakeSemanticStore:
+    configured = True
+
+    def __init__(self):
+        self.indexed = []
+
+    def upsert_summary(self, user_id, session_id, summary, created_at):
+        self.indexed.append({"user_id": user_id, "session_id": session_id, "resumo": summary, "created_at": created_at})
+
+    def search_summaries(self, user_id, query, limit):
+        return [item | {"score": 0.91} for item in self.indexed if item["user_id"] == user_id][:limit]
+
 
 def test_sessions_are_isolated_by_user(client, payload):
     assert client.post("/chat", json=payload).status_code == 200
@@ -59,3 +76,20 @@ def test_other_user_cannot_close_session(client, payload):
     client.post("/chat", json=payload)
     response = client.post(f"/sessions/{payload['session_id']}/close", json={"user_id": "outro-tecnico"})
     assert response.status_code == 403
+
+
+def test_summary_is_indexed_and_recovered_semantically():
+    semantic = FakeSemanticStore()
+    memory = MongoMemoryRepository(
+        "mongodb://unused", "semantic_test", summary_after=2,
+        client=mongomock.MongoClient(), semantic_store=semantic,
+    )
+    memory.start_session("tecnico-1", "sessao-anterior")
+    memory.save_message("tecnico-1", "sessao-anterior", "usuario", "Quero planejar uma viagem para Salvador")
+    memory.save_message("tecnico-1", "sessao-anterior", "assistente", "Posso ajudar a organizar os dados")
+    memory.maybe_summarize("tecnico-1", "sessao-anterior")
+
+    assert semantic.indexed and semantic.indexed[0]["session_id"] == "sessao-anterior"
+    _, memories = memory.context("tecnico-1", "sessao-atual", "Quero viajar nas férias")
+    assert memories[0]["summary"] == semantic.indexed[0]["resumo"]
+    assert memories[0]["score"] == 0.91

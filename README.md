@@ -32,26 +32,35 @@ ApolloAI é o módulo de inteligência artificial do Apollo para orientação de
 - 🌶️ **API:** Flask com Application Factory, Blueprints, Pydantic, CORS e OpenAPI;
 - 🤖 **Multiagentes:** sete papéis criados com LangChain e orquestrados por LangGraph;
 - 🛡️ **Fluxo seguro:** `guardrail de entrada → roteador → especialista → juiz factual → orquestrador → guardrail de saída`;
-- 📚 **RAG:** índice local persistente, busca híbrida e metadados de fonte;
+- 📚 **RAG:** Qdrant remoto obrigatório, vetores calculados sem API de embeddings e metadados de fonte;
 - 🔌 **Integrações:** MCP para ferramentas e A2A 1.0 para comunicação entre agentes;
 - 🍃 **Memória:** MongoDB para sessões, mensagens, resumos e observabilidade;
-- ⚡ **Tempo real:** Redis para ranking e fila, sem substituir o histórico persistente;
+- ⚡ **Tempo real:** Redis para ranking de rotas, sem substituir o histórico persistente;
 - 📊 **SRE:** Prometheus, latência, erros, custos estimados e ROI configurável.
+
+O runtime opera sem fallback de provedor, rota, banco ou índice. Configuração local de MongoDB, Redis ou Qdrant é rejeitada no startup; indisponibilidade desses serviços ou saída inválida do classificador e do roteador encerra a requisição com erro controlado.
 
 O diagrama Mermaid e as fronteiras estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## 🛠️ Requisitos
 
 - Python 3.11 a 3.13 recomendado;
-- MongoDB 7 ou 8;
-- Redis 7;
-- chave Groq ou Google para execução dos agentes em produção.
+- MongoDB 7 ou 8 remoto;
+- Redis 7 remoto com TLS;
+- Qdrant remoto com URL HTTPS e chave de API;
+- conta AWS com acesso ao Claude via Amazon Bedrock e permissão IAM para invocar o modelo.
 
 O ambiente de avaliação usou Python 3.14; os testes passaram, embora o LangChain tenha emitido um aviso de compatibilidade legado do Pydantic nessa versão. A imagem Docker usa Python 3.13.
 
 <a id="configuracao"></a>
 
-## ⚙️ Configuração local
+## ⚙️ Configuração
+
+### Qdrant: chunks e memória semântica
+
+Configure `QDRANT_URL` com uma URL HTTPS remota e `QDRANT_API_KEY`. Converta os PDFs com `python -m scripts.convert_pdfs_to_markdown` e execute `python -m scripts.index_qdrant`. O indexador lê os Markdown atuais, exige uma conversão para cada PDF e cria as coleções `rag_chunks` e `memoria_resumos` caso não existam. Os vetores são calculados por hashing no processo de indexação e enviados ao Qdrant, sem chamadas à API de embeddings. A busca exige o Qdrant remoto; se ele estiver indisponível, a API retorna erro em vez de consultar arquivos ou um índice local. A similaridade por hashing tem limitações semânticas. Os resumos de sessões são indexados em `memoria_resumos`; MongoDB continua sendo a fonte de verdade.
+
+Para uma indexação limpa, exclua previamente `rag_chunks` e `memoria_resumos` no Qdrant remoto. O indexador recusa coleções não vazias e não apaga dados remotos; após uma execução interrompida, exclua as coleções antes de tentar novamente.
 
 ```bash
 python -m venv .venv
@@ -73,23 +82,23 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Configure as URIs do MongoDB Atlas e do Redis Cloud e preencha apenas a chave do provedor de IA escolhido. Nunca versione `.env`. O ApolloAI não usa `DATABASE_URL` nem qualquer credencial PostgreSQL.
+Configure `PUBLIC_BASE_URL` com HTTPS, as URIs remotas do MongoDB e Redis, `QDRANT_URL`, `QDRANT_API_KEY` e `APOLLOAI_API_TOKEN`. URLs de `localhost` e Redis sem TLS são recusados fora dos testes. Nunca versione `.env`. O ApolloAI não usa `DATABASE_URL` nem credenciais PostgreSQL.
 
-Para Groq, o modelo padrão é `openai/gpt-oss-120b`. Se o seu `.env` definir `AI_MODEL`, use um identificador atualmente disponível para a sua conta.
+Para Claude no Amazon Bedrock, use `AI_PROVIDER=bedrock`, `AWS_REGION` e `AI_MODEL` com o ID do modelo ou perfil de inferência autorizado na conta. O exemplo usa `us.anthropic.claude-sonnet-4-6`; confirme a disponibilidade na região escolhida. Em produção na AWS, forneça credenciais por identidade IAM da carga de trabalho e permissão `bedrock:InvokeModel`. O Bedrock usa a conta AWS da equipe e pode gerar cobrança. Groq e Gemini continuam selecionáveis por configuração, sem troca automática de provedor.
 
-Indexe as fontes:
-
-```bash
-python scripts/index_knowledge.py
-```
-
-Inicie em desenvolvimento:
+Indexe as fontes no Qdrant remoto:
 
 ```bash
-python -m flask --app wsgi run --debug
+python -m scripts.index_qdrant
 ```
 
-Acesse `http://localhost:5000/docs` para o Swagger UI, `http://localhost:5000/openapi.json` para o contrato e `/` para a interface local de testes. O aplicativo mobile Apollo é o cliente previsto para a integração oficial.
+Para validar o processo Flask com todas as dependências remotas configuradas:
+
+```bash
+python -m flask --app wsgi run
+```
+
+Durante essa validação, acesse `http://localhost:5000/docs` para o Swagger UI, `http://localhost:5000/openapi.json` para o contrato e `/` para a interface de testes. O processo pode ser iniciado em uma máquina de desenvolvimento, mas recusa MongoDB, Redis e Qdrant locais. O aplicativo mobile Apollo é o cliente previsto para a integração oficial.
 
 ## 🚀 Produção
 
@@ -99,21 +108,13 @@ Em Linux ou no container:
 gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 90 "wsgi:app"
 ```
 
-Com MongoDB Atlas e Redis Cloud, preencha `MONGODB_URI` e `REDIS_URL` no `.env` e execute:
+Com MongoDB, Redis e Qdrant remotos configurados, execute:
 
 ```bash
 docker compose up --build
 ```
 
-Nesse modo, o container do ApolloAI acessa os dois serviços gerenciados; nenhum banco é iniciado localmente. Autorize a rede de saída da aplicação no Atlas e no provedor Redis.
-
-Para executar MongoDB e Redis localmente, use a configuração complementar:
-
-```bash
-docker compose -f compose.yaml -f compose.local.yaml up --build
-```
-
-O `compose.local.yaml` substitui as duas URIs e adiciona os serviços MongoDB e Redis. Nenhuma das configurações utiliza PostgreSQL.
+O Compose repassa `QDRANT_URL`, `QDRANT_API_KEY`, `AWS_REGION` e `AI_MODEL` ao container. MongoDB, Redis e Qdrant permanecem remotos. Para Bedrock, o container precisa receber uma identidade AWS válida; em ambiente gerenciado, use a identidade IAM da carga de trabalho. Não há pilha local de bancos nem índice local como reserva.
 
 <a id="api"></a>
 
@@ -162,7 +163,7 @@ Os headers de autenticação são obrigatórios quando `AUTH_REQUIRED=true`. O t
 Outros endpoints:
 
 - `GET /live`: vida do processo, sem depender de serviços externos;
-- `GET /health`: prontidão de MongoDB, RAG, MCP e Redis;
+- `GET /health`: prontidão de MongoDB, coleções do Qdrant remoto, MCP e Redis;
 - `GET /.well-known/agent-card.json` e `POST /a2a/v1`: descoberta e mensagens A2A 1.0;
 - `POST /sessions/{session_id}/close`: encerra a sessão e consolida sua memória longa;
 - `GET /metrics`: formato Prometheus, sem PII;
@@ -172,13 +173,13 @@ Outros endpoints:
 
 ## 🧪 Testes
 
-Não são realizadas chamadas pagas nem gravações externas:
+Os testes unitários usam serviços simulados e não fazem chamadas pagas:
 
 ```bash
-python -m pytest -q -p no:cacheprovider
+python -m pytest -m "not integration" -q -p no:cacheprovider
 ```
 
-O teste MCP real cria somente o subprocesso local do servidor:
+O teste de integração MCP cria um subprocesso e consulta o Qdrant remoto configurado:
 
 ```powershell
 $env:RUN_MCP_INTEGRATION="1"
@@ -189,6 +190,12 @@ No Linux/macOS:
 
 ```bash
 RUN_MCP_INTEGRATION=1 python -m pytest -q -p no:cacheprovider tests/test_mcp_integration.py
+```
+
+A avaliação completa do RAG também exige coleções remotas indexadas:
+
+```bash
+RUN_RAG_EVALUATION=1 python -m pytest -m integration -q tests/test_rag_evaluation.py
 ```
 
 ## 📖 Fontes técnicas atuais

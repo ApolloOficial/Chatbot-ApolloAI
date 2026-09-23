@@ -1,50 +1,38 @@
 from __future__ import annotations
 
-import json
+import pytest
 
-from app.config import Config
+from app.qdrant_store import QdrantUnavailable
 from app.services.rag import SolarKnowledgeBase
 
 
-def test_rag_returns_real_source():
-    knowledge = SolarKnowledgeBase.from_config(Config.__dict__)
-    results = knowledge.retrieve("manutenção preventiva e corretiva")
-    assert results
-    assert results[0]["url"] == "https://www.nrel.gov/docs/fy17osti/68281.pdf"
+def test_rag_uses_only_remote_store(workspace_tmp_path):
+    class Store:
+        configured = True
+
+        def search_document_chunks(self, query, limit):
+            assert (query, limit) == ("manutenção preventiva", 5)
+            return [{"documento": "fonte.md", "trecho": "Manutenção preventiva."}]
+
+        def is_ready(self):
+            return True
+
+    knowledge = SolarKnowledgeBase(workspace_tmp_path, semantic_store=Store())
+    assert knowledge.is_ready
+    assert knowledge.retrieve("manutenção preventiva")[0]["documento"] == "fonte.md"
 
 
-def test_rag_returns_empty_for_unrelated_content():
-    knowledge = SolarKnowledgeBase.from_config(Config.__dict__)
-    assert knowledge.retrieve("receita culinária de bolo de chocolate") == []
+def test_rag_does_not_fallback_to_local_document(workspace_tmp_path):
+    class Store:
+        configured = True
 
+        def search_document_chunks(self, query, limit):
+            raise QdrantUnavailable("Qdrant indisponível")
 
-def test_rag_retrieves_iea_pdf_from_portuguese_query():
-    knowledge = SolarKnowledgeBase.from_config(Config.__dict__)
-    results = knowledge.retrieve("Como avaliar degradação e modos de falha em módulos fotovoltaicos?")
-
-    assert results
-    assert results[0]["documento"] == "IEA-PVPS-T13-30-2025-REPORT-Degradation-and-Failure.pdf"
-    assert results[0]["pagina"] is not None
-    assert results[0]["url"].startswith("https://iea-pvps.org/")
-
-
-def test_rag_persists_sparse_embeddings(tmp_path):
-    documents = tmp_path / "documentos"
-    documents.mkdir()
-    (documents / "fonte.md").write_text(
-        "Photovoltaic module degradation and failure modes support preventive maintenance.",
-        encoding="utf-8",
-    )
-    index_path = tmp_path / "indice.json"
-    knowledge = SolarKnowledgeBase(documents, index_path)
-
-    assert knowledge.index_all() == 1
-    payload = json.loads(index_path.read_text(encoding="utf-8"))
-    embedding = payload["chunks"][0]["embedding"]
-
-    assert payload["version"] == 3
-    assert payload["embedding"] == "signed_feature_hashing_sparse_v1"
-    assert len(embedding) < knowledge.dimensions // 10
+    (workspace_tmp_path / "fonte.md").write_text("Manutenção preventiva.", encoding="utf-8")
+    knowledge = SolarKnowledgeBase(workspace_tmp_path, semantic_store=Store())
+    with pytest.raises(QdrantUnavailable):
+        knowledge.retrieve("manutenção preventiva")
 
 
 def test_no_source_yields_insufficiency(client, payload):

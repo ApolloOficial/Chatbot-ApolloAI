@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+
+
+def _pseudonymized_user_id(value: str) -> str:
+    if "@" in value and "." in value.split("@")[-1]:
+        raise ValueError("Use um identificador pseudonimizado, não um e-mail.")
+    return value
+
+
+UserId = Annotated[
+    str,
+    Field(min_length=3, max_length=128, pattern=r"^[A-Za-z0-9_.:@-]+$"),
+    AfterValidator(_pseudonymized_user_id),
+]
 
 
 class AssetContext(BaseModel):
@@ -23,29 +36,15 @@ class AssetContext(BaseModel):
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    user_id: str = Field(min_length=3, max_length=128, pattern=r"^[A-Za-z0-9_.:@-]+$")
+    user_id: UserId
     session_id: str = Field(min_length=8, max_length=128, pattern=r"^[A-Za-z0-9_.:-]+$")
     pergunta: str = Field(min_length=1, max_length=4000)
     contexto: AssetContext = Field(default_factory=AssetContext)
 
-    @field_validator("user_id")
-    @classmethod
-    def reject_direct_personal_identifier(cls, value: str) -> str:
-        if "@" in value and "." in value.split("@")[-1]:
-            raise ValueError("Use um identificador pseudonimizado, não um e-mail.")
-        return value
-
 
 class SessionCloseRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    user_id: str = Field(min_length=3, max_length=128, pattern=r"^[A-Za-z0-9_.:@-]+$")
-
-    @field_validator("user_id")
-    @classmethod
-    def reject_direct_personal_identifier(cls, value: str) -> str:
-        if "@" in value and "." in value.split("@")[-1]:
-            raise ValueError("Use um identificador pseudonimizado, não um e-mail.")
-        return value
+    user_id: UserId
 
 
 class SourceReference(BaseModel):

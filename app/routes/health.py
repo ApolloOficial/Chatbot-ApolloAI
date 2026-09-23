@@ -22,7 +22,8 @@ def health():
     mongo_state = memory.health()
     redis_state = redis.health()
     mcp_state = mcp.health()
-    essential_states = [mongo_state == "disponivel", rag.is_ready]
+    rag_ready = rag.is_ready
+    essential_states = [mongo_state == "disponivel", rag_ready]
     if current_app.config["REDIS_REQUIRED"]:
         essential_states.append(redis_state == "disponivel")
     if current_app.config["MCP_REQUIRED"]:
@@ -32,7 +33,7 @@ def health():
         "servico": "ApolloAI",
         "versao": current_app.config["VERSION"],
         "mongodb": mongo_state,
-        "rag": "disponivel" if rag.is_ready else "nao_indexado",
+        "rag": "disponivel" if rag_ready else "indisponivel",
         "mcp": mcp_state,
         "redis": redis_state,
     }

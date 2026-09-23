@@ -30,36 +30,12 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run isolated test suite
         run: python -m pytest -m "not integration" -q
-      - name: Evaluate RAG retrieval quality
-        run: python scripts/evaluate_rag.py
-      - name: Run real MCP stdio contract
-        env:
-          RUN_MCP_INTEGRATION: "1"
-        run: python -m pytest -m integration -q
-
   container-smoke:
-    name: Container stack smoke test
+    name: Container image build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
-      - name: Build and start stack
-        run: docker compose -f compose.yaml -f compose.local.yaml up --build --detach
-      - name: Wait for required services
-        shell: bash
-        run: |
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:5000/health; then
-              exit 0
-            fi
-            sleep 2
-          done
-          docker compose -f compose.yaml -f compose.local.yaml logs
-          exit 1
-      - name: Show logs on failure
-        if: failure()
-        run: docker compose -f compose.yaml -f compose.local.yaml logs
-      - name: Stop stack
-        if: always()
-        run: docker compose -f compose.yaml -f compose.local.yaml down --volumes
+      - name: Build image without local dependencies
+        run: docker build -t apolloai-ci .

@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 pytest-cache-files-*/
+.test-artifacts/
 .coverage
 htmlcov/
 .venv/
@@ -15,5 +16,4 @@ build/
 *.egg-info/
 .idea/
 .vscode/
-data/solar/indice.json
 *.log

@@ -9,7 +9,8 @@ from typing import Any, Literal, Protocol, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from app.guardrail import input_guardrail, normalize, output_guardrail
+from app.guardrail import input_guardrail, output_guardrail
+from app.llms import ProviderUnavailable
 from app.schemas import JudgeDecision
 
 Route = Literal["ativos_solares", "manutencao", "seguranca", "faq_apolloai", "fora_escopo"]
@@ -52,19 +53,6 @@ def _json_object(text: str) -> dict[str, Any]:
         return json.loads(match.group(0))
     except json.JSONDecodeError:
         return {}
-
-
-def _fallback_route(question: str) -> Route:
-    text = normalize(question)
-    if any(word in text for word in ("segur", "tensao", "choque", "epi", "bloqueio", "energiz")):
-        return "seguranca"
-    if any(word in text for word in ("manutenc", "preventiv", "preditiv", "corretiv", "relatorio", "falha", "anomalia")):
-        return "manutencao"
-    if any(word in text for word in ("placa", "modulo", "fotovolta", "inversor", "string", "eficien", "solar", "cabeamento", "conector")):
-        return "ativos_solares"
-    if any(word in text for word in ("apolloai", "o que voce", "quem e voce", "ola", "oi", "obrigad")):
-        return "faq_apolloai"
-    return "fora_escopo"
 
 
 def _source_context(sources: list[dict[str, Any]]) -> str:
@@ -126,12 +114,9 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
         answer, latencies = timed("roteador", content, state)
         route = _json_object(answer).get("rota")
         if route not in VALID_ROUTES:
-            route = _fallback_route(state["question"])
+            raise ProviderUnavailable("O roteador não retornou uma rota válida.")
         metrics.routes.labels(route).inc()
         return {"route": route, "agents_called": ["roteador"], "agent_latencies_ms": latencies}
-
-    def choose_specialist(state: GraphState) -> str:
-        return state["route"]
 
     def specialist(agent_name: str):
         def node(state: GraphState) -> GraphState:
@@ -218,7 +203,7 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
     graph.add_conditional_edges(
         "guardrail_entrada", after_guard, {"blocked": END, "social": END, "router": "roteador"},
     )
-    graph.add_conditional_edges("roteador", choose_specialist, {route: route for route in VALID_ROUTES})
+    graph.add_conditional_edges("roteador", lambda state: state["route"], {route: route for route in VALID_ROUTES})
     for route in ("ativos_solares", "manutencao", "seguranca", "faq_apolloai"):
         graph.add_edge(route, "juiz_factual")
     graph.add_edge("fora_escopo", END)

@@ -10,8 +10,10 @@ from flask import Flask
 from app.graph import build_graph
 from app.llms import LangChainAgentRuntime, ProviderUnavailable
 from app.memory import MemoryUnavailable
+from app.qdrant_store import QdrantUnavailable
 from app.schemas import ChatRequest, ChatResponse, SourceReference
 from app.services.mcp_client import MCPRetriever, MCPUnavailable, SolarMCPClient
+from app.services.redis_service import RedisUnavailable
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +38,6 @@ class ChatService:
     def from_app(cls, app: Flask):
         from app.extensions import get_service
 
-        from app.services.mcp_client import MCPRetriever
-
         return cls(
             app.config, get_service(app, "memory"), get_service(app, "redis"),
             app.extensions["metrics"], retriever=MCPRetriever(get_service(app, "mcp")),
@@ -54,6 +54,9 @@ class ChatService:
                 self.metrics.mongo_failures.inc()
                 self.metrics.record_error("mongodb_indisponivel")
                 return self._error(request.session_id, "O histórico persistente está temporariamente indisponível. Tente novamente.")
+            if self.config["REDIS_REQUIRED"] and self.redis.health() != "disponivel":
+                self.metrics.record_error("redis_indisponivel")
+                return self._error(request.session_id, "O Redis está temporariamente indisponível. Tente novamente.")
         except MemoryUnavailable:
             self.metrics.mongo_failures.inc()
             self.metrics.record_error("mongodb_indisponivel")
@@ -79,6 +82,7 @@ class ChatService:
                 "judge_decision": state.get("judge_decision", {}), "blocked": response.status == "bloqueado",
                 "block_reason": response.motivo_bloqueio, "total_latency_ms": latency_ms,
             }
+            self.redis.record_route(response.rota)
             self.memory.save_message(request.user_id, request.session_id, "usuario", request.pergunta)
             self.memory.save_message(request.user_id, request.session_id, "assistente", response.resposta, **metadata)
             self.memory.update_session_result(request.user_id, request.session_id, response.rota)
@@ -89,7 +93,6 @@ class ChatService:
                 "block_reason": response.motivo_bloqueio, "agent_latencies_ms": state.get("agent_latencies_ms", {}),
                 "total_latency_ms": latency_ms, "source_count": len(response.fontes),
             })
-            self.redis.record_route(response.rota)
             self.metrics.total_latency.observe(latency_ms / 1000)
             input_tokens = _estimate_tokens(request.pergunta) + sum(_estimate_tokens(str(item)) for item in recent)
             output_tokens = _estimate_tokens(response.resposta)
@@ -99,6 +102,10 @@ class ChatService:
         except MCPUnavailable:
             self.metrics.mcp_failures.inc()
             return self._controlled_failure(request, "mcp_indisponivel", "A base técnica está temporariamente indisponível. Tente novamente.", started)
+        except QdrantUnavailable:
+            return self._controlled_failure(request, "qdrant_indisponivel", "A base técnica remota está temporariamente indisponível. Tente novamente.", started)
+        except RedisUnavailable:
+            return self._controlled_failure(request, "redis_indisponivel", "O Redis está temporariamente indisponível. Tente novamente.", started)
         except ProviderUnavailable:
             return self._controlled_failure(request, "provedor_ia_indisponivel", "O provedor de IA está temporariamente indisponível. Tente novamente.", started)
         except MemoryUnavailable:

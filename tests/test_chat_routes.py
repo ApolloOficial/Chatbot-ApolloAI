@@ -76,14 +76,19 @@ def test_invalid_payload_returns_422(client):
 
 
 def test_cors_uses_configuration(client):
-    response = client.options("/chat", headers={"Origin": "http://cliente.local", "Access-Control-Request-Method": "POST"})
+    response = client.options("/chat", headers={
+        "Origin": "http://cliente.local",
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "X-User-ID",
+    })
     assert response.headers["Access-Control-Allow-Origin"] == "http://cliente.local"
+    assert "X-User-ID" in response.headers["Access-Control-Allow-Headers"]
 
 
 def test_health_metrics_and_openapi_are_flask_routes(client):
     health = client.get("/health")
-    assert health.status_code == 503
-    assert health.json["redis"] == "indisponivel"
+    assert health.status_code == 200
+    assert health.json["redis"] == "disponivel"
     assert health.json["mcp"] == "disponivel"
     assert client.get("/live").status_code == 200
     assert client.get("/metrics").status_code == 200

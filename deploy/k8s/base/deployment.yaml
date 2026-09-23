@@ -12,6 +12,7 @@ spec:
       labels:
         app: apolloai
     spec:
+      serviceAccountName: apolloai
       containers:
         - name: apolloai
           image: ghcr.io/replace-with-owner/apolloai:replace-with-tag
