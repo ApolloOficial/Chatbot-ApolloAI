@@ -21,10 +21,9 @@ kubectl cluster-info
 
 ## 1. Personalizar o overlay
 
-Substitua, em `deploy/k8s/overlays/hml/kustomization.yaml`:
-
-- `ghcr.io/replace-with-owner/apolloai` pelo repositório real;
-- `replace-with-commit-sha` pelo SHA imutável da imagem.
+Em `deploy/k8s/overlays/hml/kustomization.yaml`, substitua `replace-with-commit-sha`
+pela tag imutável `sha-<SHA completo>` publicada pelo workflow de CI. A imagem é
+publicada em `ghcr.io/apollooficial/chatbot-apolloai` após os testes de cada push.
 
 Substitua `apolloai-hml.example.com` no `ingress.yaml` e no `configmap-patch.yaml`. Ajuste também `CORS_ORIGINS` para a origem web autorizada. Não use `*` com credenciais.
 

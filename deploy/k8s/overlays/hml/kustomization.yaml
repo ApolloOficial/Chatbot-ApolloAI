@@ -9,8 +9,8 @@ patches:
   - path: configmap-patch.yaml
   - path: deployment-patch.yaml
 images:
-  - name: ghcr.io/replace-with-owner/apolloai
-    newName: ghcr.io/replace-with-owner/apolloai
+  - name: ghcr.io/apollooficial/chatbot-apolloai
+    newName: ghcr.io/apollooficial/chatbot-apolloai
     newTag: replace-with-commit-sha
 labels:
   - pairs:
