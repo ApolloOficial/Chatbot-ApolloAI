@@ -48,7 +48,7 @@ O diagrama Mermaid e as fronteiras estão em [docs/ARCHITECTURE.md](docs/ARCHITE
 - MongoDB 7 ou 8 remoto;
 - Redis 7 remoto com TLS;
 - Qdrant remoto com URL HTTPS e chave de API;
-- conta AWS com acesso ao Claude via Amazon Bedrock e permissão IAM para invocar o modelo.
+- conta Groq no plano gratuito e chave de API; a AWS Academy hospeda somente a aplicação.
 
 O ambiente de avaliação usou Python 3.14; os testes passaram, embora o LangChain tenha emitido um aviso de compatibilidade legado do Pydantic nessa versão. A imagem Docker usa Python 3.13.
 
@@ -84,7 +84,7 @@ cp .env.example .env
 
 Configure `PUBLIC_BASE_URL` com HTTPS, as URIs remotas do MongoDB e Redis, `QDRANT_URL`, `QDRANT_API_KEY` e `APOLLOAI_API_TOKEN`. URLs de `localhost` e Redis sem TLS são recusados fora dos testes. Nunca versione `.env`. O ApolloAI não usa `DATABASE_URL` nem credenciais PostgreSQL.
 
-Para Claude no Amazon Bedrock, use `AI_PROVIDER=bedrock`, `AWS_REGION` e `AI_MODEL` com o ID do modelo ou perfil de inferência autorizado na conta. O exemplo usa `us.anthropic.claude-sonnet-4-6`; confirme a disponibilidade na região escolhida. Em produção na AWS, forneça credenciais por identidade IAM da carga de trabalho e permissão `bedrock:InvokeModel`. O Bedrock usa a conta AWS da equipe e pode gerar cobrança. Groq e Gemini continuam selecionáveis por configuração, sem troca automática de provedor.
+O ambiente padrão usa `AI_PROVIDER=groq` e `AI_MODEL=openai/gpt-oss-20b`. Mantenha a conta Groq no plano gratuito e configure `GROQ_API_KEY`; ao atingir a cota, a API falha de forma controlada, sem trocar automaticamente de provedor. Gemini permanece selecionável por configuração. Os vetores do RAG são calculados localmente e não consomem a cota de nenhum modelo generativo.
 
 Indexe as fontes no Qdrant remoto:
 
@@ -114,7 +114,7 @@ Com MongoDB, Redis e Qdrant remotos configurados, execute:
 docker compose up --build
 ```
 
-O Compose repassa `QDRANT_URL`, `QDRANT_API_KEY`, `AWS_REGION` e `AI_MODEL` ao container. MongoDB, Redis e Qdrant permanecem remotos. Para Bedrock, o container precisa receber uma identidade AWS válida; em ambiente gerenciado, use a identidade IAM da carga de trabalho. Não há pilha local de bancos nem índice local como reserva.
+O Compose repassa `QDRANT_URL`, `QDRANT_API_KEY`, `GROQ_API_KEY` e `AI_MODEL` ao container. MongoDB, Redis e Qdrant permanecem remotos. Não há pilha local de bancos, índice local ou troca automática de provedor.
 
 <a id="api"></a>
 
@@ -214,6 +214,7 @@ O corpus reúne a síntese curada NREL/FS-7A40-68281 e 19 PDFs originais da IEA 
 - 🤝 [A2A](docs/A2A.md)
 - 🔐 [Autenticação](docs/AUTHENTICATION.md)
 - 🚀 [Implantação](docs/DEPLOYMENT.md)
+- ☁️ [AWS Academy Learner Lab](docs/AWS_LEARNER_LAB.md)
 - 📱 [Integração com o aplicativo mobile](docs/MOBILE_INTEGRATION.md)
 - 📊 [Observabilidade, custos e ROI](docs/OBSERVABILITY.md)
 - 🔏 [Privacidade e retenção](docs/PRIVACY.md)

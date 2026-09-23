@@ -2,6 +2,8 @@
 
 O overlay `deploy/k8s/overlays/hml` publica o ApolloAI em um namespace isolado, com duas réplicas, atualização gradual, probes e Ingress HTTPS. Ele pressupõe MongoDB e Redis gerenciados; nenhum banco é criado dentro do cluster.
 
+Este overlay é uma referência para um ambiente Kubernetes já existente. Não crie um cluster EKS dentro do Learner Lab de US$ 50: somente o plano de controle padrão custa cerca de US$ 73 por mês, antes dos nós, volumes e endereços IP. Para o laboratório, siga [AWS_LEARNER_LAB.md](AWS_LEARNER_LAB.md).
+
 ## Pré-requisitos
 
 - cluster Kubernetes gerenciado e acesso com `kubectl`;
@@ -10,7 +12,7 @@ O overlay `deploy/k8s/overlays/hml` publica o ApolloAI em um namespace isolado, 
 - domínio sob controle da equipe;
 - imagem publicada em um registry;
 - Secret Manager ou outro mecanismo seguro para criar `apolloai-secrets`.
-- identidade IAM de carga associável ao ServiceAccount `apolloai`, com acesso ao modelo Claude escolhido no Bedrock.
+- chave Groq de uma conta mantida no plano gratuito.
 
 Confirme o contexto antes de qualquer alteração:
 
@@ -43,6 +45,7 @@ Não versione a cópia personalizada se ela contiver informações que a equipe 
 O Deployment espera um Secret chamado `apolloai-secrets` no namespace `apolloai-hml`, com estas chaves:
 
 - `APOLLOAI_API_TOKEN`;
+- `GROQ_API_KEY`;
 - `QDRANT_API_KEY`;
 - `MONGODB_URI`;
 - `REDIS_URL`.
@@ -51,6 +54,7 @@ Use preferencialmente Secret Manager com External Secrets ou Secrets Store CSI. 
 
 ```dotenv
 APOLLOAI_API_TOKEN=troque-por-token-forte
+GROQ_API_KEY=troque-pela-chave-groq
 QDRANT_API_KEY=troque-pela-chave-do-qdrant
 MONGODB_URI=mongodb+srv://...
 REDIS_URL=rediss://...

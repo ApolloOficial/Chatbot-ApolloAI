@@ -1,0 +1,4 @@
+{$APOLLOAI_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy apolloai:5000
+}

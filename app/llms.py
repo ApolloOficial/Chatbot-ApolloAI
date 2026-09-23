@@ -33,16 +33,6 @@ class LangChainAgentRuntime:
             "timeout": self.config["AI_TIMEOUT_SECONDS"],
             "max_retries": self.config["AI_MAX_RETRIES"],
         }
-        if provider == "bedrock":
-            from langchain_aws import ChatBedrockConverse
-
-            return ChatBedrockConverse(
-                model=self.config["AI_MODEL"],
-                region_name=self.config["AWS_REGION"],
-                temperature=0,
-                timeout=int(self.config["AI_TIMEOUT_SECONDS"]),
-                max_retries=self.config["AI_MAX_RETRIES"],
-            )
         if provider == "groq":
             from langchain_groq import ChatGroq
 

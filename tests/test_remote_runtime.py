@@ -21,9 +21,9 @@ REMOTE_CONFIG = {
     "REDIS_ENABLED": True,
     "REDIS_REQUIRED": True,
     "MCP_REQUIRED": True,
-    "AI_PROVIDER": "bedrock",
-    "AI_MODEL": "us.anthropic.claude-sonnet-4-6",
-    "AWS_REGION": "us-east-1",
+    "AI_PROVIDER": "groq",
+    "AI_MODEL": "openai/gpt-oss-20b",
+    "GROQ_API_KEY": "test-groq-key",
 }
 
 
@@ -39,30 +39,30 @@ def test_app_accepts_remote_services_without_connecting_to_them():
     ("MONGODB_URI", "mongodb://mongo:27017"),
     ("REDIS_URL", "redis://redis:6379/0"),
     ("CORS_ORIGINS", ["http://localhost:5000"]),
-    ("AWS_REGION", None),
+    ("GROQ_API_KEY", None),
 ])
 def test_app_rejects_local_or_incomplete_configuration(field, value):
     with pytest.raises(ValueError, match=field):
         create_app(REMOTE_CONFIG | {field: value})
 
 
-def test_bedrock_uses_selected_model_and_aws_region(monkeypatch):
+def test_groq_uses_selected_model_and_api_key(monkeypatch):
     received = {}
-    module = ModuleType("langchain_aws")
+    module = ModuleType("langchain_groq")
 
     def fake_model(**kwargs):
         received.update(kwargs)
         return object()
 
-    module.ChatBedrockConverse = fake_model
-    monkeypatch.setitem(sys.modules, "langchain_aws", module)
+    module.ChatGroq = fake_model
+    monkeypatch.setitem(sys.modules, "langchain_groq", module)
     runtime = LangChainAgentRuntime({
-        "AI_PROVIDER": "bedrock", "AI_MODEL": "us.anthropic.claude-sonnet-4-6",
-        "AWS_REGION": "us-east-1", "AI_TIMEOUT_SECONDS": 30, "AI_MAX_RETRIES": 1,
+        "AI_PROVIDER": "groq", "AI_MODEL": "openai/gpt-oss-20b",
+        "GROQ_API_KEY": "test-groq-key", "AI_TIMEOUT_SECONDS": 30, "AI_MAX_RETRIES": 1,
     })
     runtime.model
-    assert received["model"] == "us.anthropic.claude-sonnet-4-6"
-    assert received["region_name"] == "us-east-1"
+    assert received["model"] == "openai/gpt-oss-20b"
+    assert received["api_key"] == "test-groq-key"
 
 
 def test_classifier_failure_does_not_approve_input():

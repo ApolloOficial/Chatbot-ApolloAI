@@ -51,9 +51,8 @@ class Config:
     REDIS_REQUIRED = os.getenv("REDIS_REQUIRED", "true").lower() == "true"
     REDIS_TIMEOUT_SECONDS = float(os.getenv("REDIS_TIMEOUT_SECONDS", "5"))
 
-    AI_PROVIDER = os.getenv("AI_PROVIDER", "bedrock")
+    AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
     AI_MODEL = os.getenv("AI_MODEL", "")
-    AWS_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION")
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     AI_TIMEOUT_SECONDS = float(os.getenv("AI_TIMEOUT_SECONDS", "30"))
@@ -85,6 +84,11 @@ class Config:
     ESTIMATED_RESOLUTION_RATE = float(os.getenv("ESTIMATED_RESOLUTION_RATE", "0.75"))
     ESTIMATED_MINUTES_SAVED = float(os.getenv("ESTIMATED_MINUTES_SAVED", "5"))
     TECHNICIAN_HOURLY_COST = float(os.getenv("TECHNICIAN_HOURLY_COST", "0"))
+    AWS_LAB_BUDGET_USD = float(os.getenv("AWS_LAB_BUDGET_USD", "50"))
+    AWS_MONTHLY_COST_100_USERS = float(os.getenv("AWS_MONTHLY_COST_100_USERS", "12.50"))
+    AWS_MONTHLY_COST_1000_USERS = float(os.getenv("AWS_MONTHLY_COST_1000_USERS", "20.10"))
+    AI_FREE_DAILY_REQUEST_LIMIT = int(os.getenv("AI_FREE_DAILY_REQUEST_LIMIT", "1000"))
+    AI_FREE_DAILY_TOKEN_LIMIT = int(os.getenv("AI_FREE_DAILY_TOKEN_LIMIT", "200000"))
 
     TESTING = False
 
@@ -116,10 +120,7 @@ def validate_remote_config(config) -> None:
         if not config.get(name):
             raise ValueError(f"{name} deve estar habilitado.")
     provider = (config.get("AI_PROVIDER") or "").lower()
-    if provider == "bedrock":
-        if not config.get("AWS_REGION"):
-            raise ValueError("AWS_REGION é obrigatório para Claude via Amazon Bedrock.")
-    elif provider == "groq":
+    if provider == "groq":
         if not config.get("GROQ_API_KEY"):
             raise ValueError("GROQ_API_KEY é obrigatória para Groq.")
     elif provider in {"google", "gemini"}:

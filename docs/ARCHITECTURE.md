@@ -19,7 +19,7 @@ flowchart LR
     Flask <--> Mongo[(MongoDB: sessões e observabilidade)]
     Flask --> Redis[(Redis remoto)]
     Flask --> QM[(Qdrant remoto: memoria_resumos)]
-    R & A & M & S & F & J & O --> Bedrock[Claude via Amazon Bedrock]
+    R & A & M & S & F & J & O --> Groq[GPT OSS 20B via Groq Free]
     Flask --> Prom[/Métricas Prometheus/]
 ```
 
