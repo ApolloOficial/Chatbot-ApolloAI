@@ -25,4 +25,6 @@ flowchart LR
 
 O backend Spring e o PostgreSQL operacional do Apollo estão fora desta fronteira. O ApolloAI recebe apenas contexto já fornecido pelo aplicativo ou pelo técnico. Não identifica, ativa ou altera placas e não registra manutenção.
 
+Na AWS Academy, Traefik e o Pod ApolloAI executam em um cluster K3s de um nó na EC2. O `LabInstanceProfile` permite que um processo de implantação sincronize o AWS Secrets Manager com um Kubernetes Secret criptografado. O Pod não recebe credenciais AWS permanentes.
+
 O padrão Application Factory separa configuração e construção da aplicação. Blueprints separam os contratos HTTP e A2A; Repository encapsula MongoDB; Adapter conecta o grafo ao MCP; StateGraph explicita a orquestração. O estado durável não depende do processo Flask nem do checkpointer em memória.

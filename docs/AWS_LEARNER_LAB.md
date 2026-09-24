@@ -1,32 +1,31 @@
-# AWS Academy Learner Lab com orçamento de US$ 50
+# AWS Academy Learner Lab com K3s
 
 ## Decisão de arquitetura
 
-As instruções do laboratório, atualizadas em 24/06/2025, dizem que somente os
-serviços listados podem ser usados. Amazon Bedrock não aparece nessa lista;
-portanto, o ApolloAI usa a AWS apenas para hospedar a API e usa Groq no plano
-gratuito para o modelo generativo. Não existe troca automática de provedor.
-
-As regiões permitidas pelo laboratório são `us-east-1` e `us-west-2`. Este guia
-usa `us-east-1`. O saldo exibido pelo Learner Lab pode atrasar de oito a doze
-horas e, se o orçamento for excedido, a conta e os recursos podem ser removidos.
+O ApolloAI usa uma única instância EC2 para hospedar um cluster K3s de um nó.
+Essa arquitetura comprova containerização e orquestração Kubernetes sem criar um
+cluster EKS. O EKS custa US$ 0,10 por hora somente pelo plano de controle, cerca
+de US$ 73 por mês, antes da EC2, EBS e IPv4, e ultrapassa o orçamento de US$ 50.
 
 ```mermaid
 flowchart LR
-    Client[Aplicativo ou backend Apollo] -->|HTTPS| Proxy[Caddy em EC2]
-    Proxy --> API[Container ApolloAI]
-    API --> Groq[Groq Free: GPT OSS 20B]
+    Client[Aplicativo ou agente externo] -->|HTTPS| DNS[DNS público]
+    DNS --> Traefik[Traefik no K3s]
+    Traefik --> API[Pod ApolloAI]
+    API --> Groq[Groq Free]
     API --> Mongo[MongoDB remoto]
     API --> Redis[Redis remoto TLS]
     API --> Qdrant[Qdrant Cloud]
-    API --> CW[Logs e métricas]
-    Registry[GHCR ou ECR] --> EC2[EC2 t3.small]
-    EC2 --> Proxy
+    Secrets[AWS Secrets Manager] -->|LabInstanceProfile| Sync[Sincronização na EC2]
+    Sync --> KSecret[Kubernetes Secret criptografado]
+    KSecret --> API
+    GHCR[Imagem pública no GHCR] --> API
 ```
 
-Não use EKS neste laboratório. O plano de controle padrão custa US$ 0,10/h,
-aproximadamente US$ 73/mês, antes de EC2, EBS, balanceador e IPv4. Os manifests
-Kubernetes do repositório continuam como referência para outro ambiente.
+O K3s utiliza o Traefik incluído na distribuição. O cert-manager solicita e
+renova o certificado TLS. O ServiceAccount identifica o Pod apenas dentro do
+Kubernetes. O acesso ao Secrets Manager é feito pelo `LabInstanceProfile` da
+EC2, sem credenciais AWS permanentes no Pod.
 
 ## Estimativa mensal
 
@@ -34,198 +33,133 @@ Kubernetes do repositório continuam como referência para outro ambiente.
 |---|---:|---:|---|
 | EC2 | US$ 7,59 | US$ 15,18 | `t3.micro` ou `t3.small`, 730 h em `us-east-1` |
 | IPv4 público | US$ 3,65 | US$ 3,65 | US$ 0,005/h |
-| EBS gp3 | US$ 0,64 | US$ 0,64 | 8 GB a US$ 0,08/GB-mês |
-| ECR | US$ 0,10 | US$ 0,10 | até 1 GB, sem considerar franquias gratuitas |
+| EBS gp3 | US$ 0,64 | US$ 0,64 | 8 GB |
+| Secrets Manager | US$ 0,40 | US$ 0,40 | um segredo, sem tráfego relevante |
 | Reserva para logs | US$ 0,52 | US$ 0,53 | estimativa de planejamento |
-| **Total estimado** | **US$ 12,50** | **US$ 20,10** | abaixo do orçamento de US$ 50 |
+| **Total estimado** | **US$ 12,80** | **US$ 20,40** | abaixo do orçamento de US$ 50 |
 
-Os valores não incluem impostos, tráfego excedente nem os serviços externos de
-MongoDB, Redis e Qdrant. O cenário de 1.000 usuários é uma estimativa de custo,
-não uma garantia de capacidade; execute teste de carga antes da apresentação.
-Com as premissas atuais de mensagens e agentes, tanto 100 quanto 1.000 usuários
-semanais excedem a referência de 200.000 tokens por dia do plano gratuito do
-modelo. O relatório `python scripts/estimate_costs.py` evidencia essa restrição
-com `free_quota_feasible=false`. O orçamento AWS permanece abaixo de US$ 50,
-mas ele não compra capacidade adicional na Groq.
+O K3s recomenda pelo menos duas CPUs e 2 GB de RAM para um servidor. Uma
+`t3.small` está no limite mínimo e deve executar somente uma réplica. Se houver
+pressão de memória, redimensione temporariamente para `t3.medium` e acompanhe o
+saldo do laboratório. MongoDB, Redis e Qdrant externos não estão incluídos.
 
-Referências de preço: [EC2 T3](https://docs.aws.amazon.com/prescriptive-guidance/latest/optimize-costs-microsoft-workloads/right-size-selection.html),
-[IPv4 público](https://aws.amazon.com/vpc/pricing/),
-[EBS gp3](https://aws.amazon.com/ebs/volume-types/),
-[ECR](https://aws.amazon.com/ecr/pricing/) e
-[EKS](https://aws.amazon.com/eks/pricing/).
+Os cenários de uso ultrapassam a referência de 200.000 tokens diários do plano
+gratuito configurado. `python scripts/estimate_costs.py` registra essa restrição
+com `free_quota_feasible=false`; o orçamento AWS não compra mais cota da Groq.
 
 ## 1. Preparar os serviços externos
 
-Antes de consumir o orçamento AWS, confirme:
+Confirme antes do deploy:
 
 - MongoDB remoto com URI `mongodb+srv://`;
 - Redis remoto com URI `rediss://`;
-- Qdrant Cloud com as collections `rag_chunks` e `memoria_resumos` indexadas;
-- conta Groq no plano gratuito, chave criada e modelo
-  `openai/gpt-oss-20b` habilitado;
-- domínio ou subdomínio já controlado pela equipe.
+- Qdrant Cloud com `rag_chunks` e `memoria_resumos` indexadas;
+- conta Groq sem forma de pagamento e modelo `openai/gpt-oss-20b` habilitado;
+- domínio ou subdomínio controlado pela equipe;
+- imagem pública no GHCR com tag `sha-<commit completo>`.
 
-O Learner Lab permite usar Route 53, mas não registrar um domínio. Registre ou
-obtenha o subdomínio fora do laboratório e aponte-o depois para o IPv4 da EC2.
-O plano gratuito da Groq retorna erro de limite quando a cota termina; não
-adicione forma de pagamento nem migre para um plano pago se a regra do projeto
-for custo zero para a API generativa.
+## 2. Configurar a EC2
 
-Referências: [modelos Groq](https://console.groq.com/docs/models),
-[limites](https://console.groq.com/docs/rate-limits) e
-[faturamento](https://console.groq.com/docs/billing-faqs).
+Use Amazon Linux 2023 `x86_64`, 8 GB de EBS gp3 e o perfil
+`LabInstanceProfile`. Libere no Security Group:
 
-## 2. Iniciar o laboratório
+- porta 22 somente para o IP da equipe;
+- portas 80 e 443 para os clientes;
+- nenhuma exposição das portas 5000 e 6443.
 
-1. Selecione **Start Lab**.
-2. Abra o console AWS pelo link do laboratório.
-3. Selecione `us-east-1`.
-4. Anote o saldo atual e o horário; o valor não é atualizado em tempo real.
-5. Não use **Reset**, pois essa ação remove permanentemente os recursos e não
-   restaura o orçamento.
+Associe um IPv4 estável enquanto o ambiente estiver em uso. Ao excluir a
+implantação, libere também a Elastic IP e o volume para interromper a cobrança.
 
-## 3. Criar a EC2
+## 3. Criar o segredo
 
-No console EC2, crie uma instância com:
+No AWS Secrets Manager, em `us-east-1`, crie `apolloai/hml` como JSON:
 
-- Amazon Linux 2023 `x86_64`;
-- `t3.small` para a primeira homologação completa;
-- 8 GB de EBS `gp3`;
-- par de chaves `vockey` em `us-east-1`;
-- perfil de instância `LabInstanceProfile`;
-- IPv4 público ou Elastic IP;
-- porta 22 liberada somente para o seu IP;
-- portas 80 e 443 liberadas para os clientes;
-- porta 5000 fechada para a internet.
+```json
+{
+  "APOLLOAI_API_TOKEN": "valor forte e exclusivo",
+  "GROQ_API_KEY": "chave da conta gratuita",
+  "QDRANT_API_KEY": "chave do Qdrant Cloud",
+  "MONGODB_URI": "mongodb+srv://...",
+  "REDIS_URL": "rediss://..."
+}
+```
 
-Uma Elastic IP mantém o DNS estável entre sessões, mas continua sendo cobrada.
-Libere-a ao excluir a implantação.
-
-## 4. Instalar Docker
-
-Conecte-se por SSH ou Session Manager e execute:
+O perfil da instância precisa de `secretsmanager:GetSecretValue` apenas para
+esse segredo. Confirme na EC2 sem imprimir o conteúdo:
 
 ```bash
-sudo yum update -y
-sudo yum install -y docker git
-sudo systemctl enable --now docker
-sudo usermod -a -G docker ec2-user
+aws sts get-caller-identity
+aws secretsmanager describe-secret --region us-east-1 --secret-id apolloai/hml
 ```
 
-Saia da sessão e entre novamente para aplicar o grupo `docker`. A instalação
-segue o procedimento oficial para
-[Docker no Amazon Linux 2023](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html).
+## 4. Instalar K3s
 
-## 5. Preparar domínio e configuração
-
-Aponte um registro DNS `A` para o IPv4 da instância. Depois crie os arquivos:
+Na EC2, entre no repositório atualizado e execute:
 
 ```bash
-sudo mkdir -p /opt/apolloai
-sudo chown ec2-user:ec2-user /opt/apolloai
-cd /opt/apolloai
+git pull --ff-only
+bash deploy/k3s/install.sh
+kubectl get nodes
 ```
 
-Copie `deploy/ec2/Caddyfile` para esse diretório e crie `/opt/apolloai/.env`:
+O script instala K3s, Traefik e cert-manager `v1.21.2`. Os Kubernetes Secrets
+são criptografados no armazenamento do K3s. O kubeconfig fica em
+`~/.kube/config` com permissão `600`.
 
-```dotenv
-APOLLOAI_DOMAIN=api-hml.seudominio.com.br
-PUBLIC_BASE_URL=https://api-hml.seudominio.com.br
-CORS_ORIGINS=https://app-hml.seudominio.com.br
-AUTH_REQUIRED=true
-APOLLOAI_API_TOKEN=gere-um-token-forte
+## 5. Configurar domínio e deploy
 
-AI_PROVIDER=groq
-AI_MODEL=openai/gpt-oss-20b
-GROQ_API_KEY=preencha-sem-versionar
-
-MONGODB_URI=mongodb+srv://...
-MONGODB_DATABASE=apollo_ai_hml
-MONGODB_REQUIRED=true
-REDIS_URL=rediss://...
-REDIS_ENABLED=true
-REDIS_REQUIRED=true
-
-QDRANT_URL=https://seu-cluster.aws.cloud.qdrant.io:6333
-QDRANT_API_KEY=preencha-sem-versionar
-QDRANT_VECTOR_SIZE=768
-MCP_REQUIRED=true
-
-AWS_LAB_BUDGET_USD=50
-AWS_MONTHLY_COST_100_USERS=12.50
-AWS_MONTHLY_COST_1000_USERS=20.10
-AI_FREE_DAILY_REQUEST_LIMIT=1000
-AI_FREE_DAILY_TOKEN_LIMIT=200000
-```
-
-Proteja o arquivo:
+Crie no DNS um registro `A` apontando o domínio para o IPv4 público da EC2.
+Depois prepare a configuração sem credenciais:
 
 ```bash
-chmod 600 /opt/apolloai/.env
+cp deploy/k3s/deploy.env.example deploy/k3s/deploy.env
+nano deploy/k3s/deploy.env
 ```
 
-Para a entrega final, armazene os valores no AWS Secrets Manager e gere o
-arquivo apenas no boot da instância. Nunca coloque esse arquivo no Git, na
-imagem ou no aplicativo mobile.
+Preencha a tag exata da imagem, domínio, origem CORS, URL do Qdrant, e-mail ACME,
+identificador do segredo e região. O arquivo é ignorado pelo Git.
 
-## 6. Executar a imagem imutável
-
-Defina a tag `sha-<commit>` gerada pela CI. Se o pacote GHCR for privado,
-execute `docker login ghcr.io` usando um token somente de leitura.
+Implante:
 
 ```bash
-export APOLLOAI_IMAGE=ghcr.io/apollooficial/chatbot-apolloai:sha-<commit-completo>
-docker network create apolloai
-docker pull "$APOLLOAI_IMAGE"
-docker run -d \
-  --name apolloai \
-  --restart unless-stopped \
-  --network apolloai \
-  --env-file /opt/apolloai/.env \
-  "$APOLLOAI_IMAGE"
-docker run -d \
-  --name apolloai-proxy \
-  --restart unless-stopped \
-  --network apolloai \
-  -p 80:80 -p 443:443 \
-  --env-file /opt/apolloai/.env \
-  -v /opt/apolloai/Caddyfile:/etc/caddy/Caddyfile:ro \
-  -v apolloai-caddy-data:/data \
-  caddy:2-alpine
+bash deploy/k3s/deploy.sh
 ```
 
-Caddy solicita e renova o certificado somente depois que o DNS público aponta
-para a instância e as portas 80/443 estão acessíveis.
+O deploy sincroniza o Secrets Manager com `apolloai-secrets`, renderiza os
+manifestos sem placeholders, aplica uma réplica e espera o rollout. O Pod não
+recebe chaves AWS.
 
-## 7. Validar
+## 6. Validar e coletar evidências
+
+Depois que o DNS propagar e o certificado ficar pronto:
 
 ```bash
-docker ps
-docker logs --tail 100 apolloai
-docker logs --tail 100 apolloai-proxy
-curl --fail https://api-hml.seudominio.com.br/live
-curl --fail https://api-hml.seudominio.com.br/health
+kubectl -n apolloai-hml get pods,service,ingress,certificate
+bash deploy/k3s/validate.sh
 ```
 
-Depois faça uma chamada autenticada a `/chat` e confira `/metrics`. O endpoint
-`/health` só responde com sucesso quando MongoDB, Redis, Qdrant e MCP estiverem
-prontos.
+O validador exige HTTP 200 em `/live` e `/health`, chama `/chat` com autenticação,
+valida o Agent Card e A2A, executa os testes MCP e RAG contra os serviços remotos
+e captura `/metrics`. As evidências ficam em `deploy/k3s/evidence/`, diretório
+ignorado pelo Git.
 
-## 8. Preservar o orçamento
+## 7. Operar dentro do orçamento
 
-- acompanhe o saldo no Learner Lab e no Cost Explorer;
-- use apenas uma instância e evite NAT Gateway, EKS, RDS e load balancer;
-- interrompa a EC2 ao terminar o trabalho do dia;
-- lembre que o laboratório pode reiniciar instâncias na próxima sessão;
-- remova volumes, snapshots e Elastic IP que não serão mais usados;
-- exclua aplicações SageMaker e outros recursos de teste;
-- mantenha uma margem de pelo menos US$ 10 para atraso de contabilização.
+- pare a EC2 quando o ambiente não estiver sendo demonstrado;
+- acompanhe saldo e Cost Explorer;
+- não use EKS, NAT Gateway, RDS ou load balancer dedicado;
+- mantenha somente uma réplica;
+- conserve ao menos US$ 10 para atrasos de contabilização;
+- não use **Reset Lab**, pois os recursos podem ser removidos sem restaurar saldo.
 
-Para desmontar somente os containers:
+Para remover a aplicação sem desinstalar o K3s:
 
 ```bash
-docker rm -f apolloai apolloai-proxy
+kubectl delete namespace apolloai-hml
+kubectl delete clusterissuer letsencrypt-production
 ```
 
-Excluir a EC2, o volume EBS e a Elastic IP encerra os principais custos dessa
-arquitetura.
+Referências: [preço do EKS](https://aws.amazon.com/eks/pricing/),
+[requisitos do K3s](https://docs.k3s.io/installation/requirements/),
+[instalação do K3s](https://docs.k3s.io/quick-start/) e
+[cert-manager](https://cert-manager.io/docs/installation/kubectl/).

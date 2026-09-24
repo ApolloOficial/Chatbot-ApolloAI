@@ -40,10 +40,50 @@ jobs:
       - name: Build image without local dependencies
         run: docker build -t apolloai-ci .
 
+  secret-scan:
+    name: Tracked credential scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Reject tracked credentials
+        run: python scripts/check_tracked_secrets.py
+
+  k3s-manifest-smoke:
+    name: Render K3s manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Check deployment scripts
+        run: shellcheck deploy/k3s/*.sh
+      - name: Render the AWS Lab overlay
+        run: |
+          python deploy/k3s/render.py \
+            --domain api-hml.apolloai.example.com \
+            --cors-origin https://app-hml.apolloai.example.com \
+            --qdrant-url https://cluster.aws.cloud.qdrant.io:6333 \
+            --image-tag sha-0000000000000000000000000000000000000000 \
+            --acme-email equipe@apolloai.example.com \
+            > /tmp/apolloai-k3s.yaml
+          if grep -E '\.invalid|replace-with|CHANGE_ME' /tmp/apolloai-k3s.yaml; then
+            echo "Manifesto contém configuração provisória." >&2
+            exit 1
+          fi
+          grep -q 'ingressClassName: traefik' /tmp/apolloai-k3s.yaml
+          grep -q 'kind: ClusterIssuer' /tmp/apolloai-k3s.yaml
+          grep -q 'kind: Deployment' /tmp/apolloai-k3s.yaml
+
   publish-image:
     name: Publish commit image
     if: github.event_name == 'push'
-    needs: [tests, container-smoke]
+    needs: [tests, container-smoke, secret-scan, k3s-manifest-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
