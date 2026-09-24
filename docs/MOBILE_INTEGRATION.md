@@ -25,7 +25,7 @@ O aplicativo não deve conter `APOLLOAI_API_TOKEN`, credenciais de banco ou chav
 ### P0 — obrigatórios
 
 - [ ] **Definir o caminho de autenticação.** Confirmar que o mobile chamará o backend Apollo, e não o ApolloAI diretamente. Se a chamada direta for obrigatória, substituir o segredo estático atual por validação de JWT/OIDC antes da integração.
-- [ ] **Publicar um ambiente de homologação HTTPS.** Escolher cluster/provedor, publicar imagem imutável, configurar domínio, certificado, Ingress/Gateway e Secret Manager.
+- [ ] **Publicar um ambiente de homologação HTTPS.** Escolher cluster/provedor, publicar imagem imutável, configurar IPv4 ou hostname público, certificado, Ingress/Gateway e Secret Manager.
 - [ ] **Deixar `/health` saudável no ambiente implantado.** Validar MongoDB Atlas, Redis Cloud, RAG e MCP a partir da rede do cluster. A conexão TLS do Atlas ainda precisa ser confirmada fora da rede local atual.
 - [ ] **Configurar segredos de homologação.** Definir token exclusivo, chave do Qdrant, URIs gerenciadas e `GROQ_API_KEY` de uma conta mantida no plano gratuito.
 - [ ] **Congelar ou versionar o contrato.** O endpoint atual é `/chat`; decidir se a integração será mantida assim ou publicada como `/v1/chat` antes de distribuir o app.

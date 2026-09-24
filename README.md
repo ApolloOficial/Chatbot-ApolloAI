@@ -102,19 +102,30 @@ Durante essa validação, acesse `http://localhost:5000/docs` para o Swagger UI,
 
 ## 🚀 Produção
 
-Em Linux ou no container:
+O ambiente oficial usa K3s em uma única EC2 do AWS Learner Lab. A CI publica a
+imagem com uma tag imutável vinculada ao commit; o K3s executa o Pod atrás do
+Traefik e o cert-manager mantêm o HTTPS. O endpoint pode usar diretamente o
+IPv4 público da EC2; um domínio próprio não é obrigatório.
 
 ```bash
-gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 90 "wsgi:app"
+bash deploy/k3s/install.sh
+cp deploy/k3s/deploy.env.example deploy/k3s/deploy.env
+nano deploy/k3s/deploy.env
+bash deploy/k3s/deploy.sh
 ```
 
-Com MongoDB, Redis e Qdrant remotos configurados, execute:
+As credenciais são lidas do AWS Secrets Manager pelo `LabInstanceProfile` da
+EC2 e sincronizadas com um Kubernetes Secret. Nenhuma chave AWS é entregue ao
+Pod. Depois da emissão do certificado, execute:
 
 ```bash
-docker compose up --build
+bash deploy/k3s/validate.sh
 ```
 
-O Compose repassa `QDRANT_URL`, `QDRANT_API_KEY`, `GROQ_API_KEY` e `AI_MODEL` ao container. MongoDB, Redis e Qdrant permanecem remotos. Não há pilha local de bancos, índice local ou troca automática de provedor.
+O procedimento completo está em
+[docs/AWS_LEARNER_LAB.md](docs/AWS_LEARNER_LAB.md). MongoDB, Redis e Qdrant
+permanecem remotos. Não há pilha local de bancos, índice local ou troca
+automática de provedor.
 
 <a id="api"></a>
 

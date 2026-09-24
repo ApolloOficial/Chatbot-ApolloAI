@@ -15,8 +15,8 @@ BASE_CONFIG = {
     "ESTIMATED_MINUTES_SAVED": 5,
     "TECHNICIAN_HOURLY_COST": 0,
     "AWS_LAB_BUDGET_USD": 50,
-    "AWS_MONTHLY_COST_100_USERS": 12.50,
-    "AWS_MONTHLY_COST_1000_USERS": 20.10,
+    "AWS_MONTHLY_COST_100_USERS": 12.80,
+    "AWS_MONTHLY_COST_1000_USERS": 20.40,
     "AI_FREE_DAILY_REQUEST_LIMIT": 1000,
     "AI_FREE_DAILY_TOKEN_LIMIT": 200000,
 }
@@ -24,7 +24,7 @@ BASE_CONFIG = {
 
 @pytest.mark.parametrize(
     "users,monthly_cost",
-    [(100, 12.50), (1000, 20.10)],
+    [(100, 12.80), (1000, 20.40)],
 )
 def test_weekly_scenario_includes_aws_lab_infrastructure(users, monthly_cost):
     scenario = estimate_weekly_scenario(users, BASE_CONFIG)
