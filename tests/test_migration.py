@@ -27,7 +27,8 @@ def test_application_factory_and_blueprints():
     assert {"chat", "health", "metrics", "docs"}.issubset(app.blueprints)
 
 
-def test_wsgi_imports_application():
+def test_wsgi_imports_application(monkeypatch):
+    monkeypatch.setattr("app.validate_remote_config", lambda config: None)
     module = importlib.import_module("wsgi")
     assert module.app.name == "app"
 

@@ -11,6 +11,7 @@ langchain-google-genai>=2,<4
 langgraph>=0.2,<2
 mcp>=1.13,<2
 pypdf>=6,<7
+qdrant-client>=1.12,<2
 prometheus-client>=0.21,<1
 gunicorn>=23,<24
 

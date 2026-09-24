@@ -12,9 +12,10 @@ spec:
       labels:
         app: apolloai
     spec:
+      serviceAccountName: apolloai
       containers:
         - name: apolloai
-          image: ghcr.io/replace-with-owner/apolloai:replace-with-tag
+          image: ghcr.io/apollooficial/chatbot-apolloai:replace-with-tag
           ports:
             - name: http
               containerPort: 5000

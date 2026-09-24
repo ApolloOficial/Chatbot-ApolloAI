@@ -12,12 +12,14 @@ flowchart LR
     R --> F[FAQ ApolloAI]
     A & M & S --> MC[Cliente MCP]
     MC --> MS[Servidor MCP stdio]
-    MS --> RAG[Índice vetorial solar]
+    MS --> RAG[(Qdrant remoto: rag_chunks)]
     A & M & S & F --> J[Juiz factual]
     J --> O[Orquestrador]
     O --> GS[Guardrail de saída]
     Flask <--> Mongo[(MongoDB: sessões e observabilidade)]
-    Flask -. cache / ranking .-> Redis[(Redis opcional)]
+    Flask --> Redis[(Redis remoto)]
+    Flask --> QM[(Qdrant remoto: memoria_resumos)]
+    R & A & M & S & F & J & O --> Groq[GPT OSS 20B via Groq Free]
     Flask --> Prom[/Métricas Prometheus/]
 ```
 

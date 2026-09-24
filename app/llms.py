@@ -11,6 +11,7 @@ from langchain.agents import create_agent
 from app.prompts import AGENT_PROMPTS, INPUT_CLASSIFIER_PROMPT
 
 logger = logging.getLogger(__name__)
+INPUT_CATEGORIES = {"APROVADO", "OFENSIVO", "FORA_ESCOPO", "PERIGOSO", "ILICITO"}
 
 
 class ProviderUnavailable(RuntimeError):
@@ -59,8 +60,7 @@ class LangChainAgentRuntime:
                     model=self.model, system_prompt=AGENT_PROMPTS[agent_name], name=agent_name,
                 )
             output = self._agents[agent_name].invoke({"messages": [{"role": "user", "content": content}]})
-            text = getattr(output["messages"][-1], "content", "")
-            return text if isinstance(text, str) else json.dumps(text, ensure_ascii=False)
+            return _content_text(getattr(output["messages"][-1], "content", ""))
         except ProviderUnavailable:
             raise
         except Exception as error:
@@ -70,7 +70,20 @@ class LangChainAgentRuntime:
     def classify_input(self, message: str) -> str:
         try:
             result = self.model.invoke(INPUT_CLASSIFIER_PROMPT.format(message=message))
-            return str(result.content).strip().upper().split()[0]
+            category = _content_text(result.content).strip().upper().split()[0]
+            if category not in INPUT_CATEGORIES:
+                raise ValueError("Categoria inválida.")
+            return category
         except Exception as error:
             logger.warning("classificador_semantico_indisponivel", extra={"error_type": type(error).__name__})
-            return "APROVADO"
+            raise ProviderUnavailable("Classificador de segurança indisponível.") from error
+
+
+def _content_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = [item.get("text", "") for item in content if isinstance(item, dict)]
+        if any(parts):
+            return "\n".join(part for part in parts if part)
+    return json.dumps(content, ensure_ascii=False)

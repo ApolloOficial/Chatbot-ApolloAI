@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apolloai-config
+data:
+  AUTH_REQUIRED: "true"
+  PUBLIC_BASE_URL: "https://apolloai-hml.example.com"
+  CORS_ORIGINS: "https://backend-hml.example.com"
+  MONGODB_DATABASE: "apollo_ai_hml"
+  MONGODB_REQUIRED: "true"
+  REDIS_ENABLED: "true"
+  REDIS_REQUIRED: "true"
+  MCP_REQUIRED: "true"

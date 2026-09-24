@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import shutil
+import uuid
+from pathlib import Path
 
 import mongomock
 import pytest
@@ -9,6 +12,16 @@ from app import create_app
 from app.guardrail import normalize
 from app.memory import MongoMemoryRepository
 from app.services.chat_service import ChatService
+
+
+@pytest.fixture
+def workspace_tmp_path():
+    path = Path.cwd() / ".test-artifacts" / uuid.uuid4().hex
+    path.mkdir(parents=True)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 class TestMemory(MongoMemoryRepository):
@@ -27,7 +40,22 @@ class FakeRedis:
         self.routes.append(route)
 
     def health(self):
-        return "indisponivel"
+        return "disponivel"
+
+
+class FakeSemanticStore:
+    configured = True
+
+    def __init__(self):
+        self.summaries = {}
+
+    def search_summaries(self, user_id, query, limit):
+        return [value for (owner, _), value in self.summaries.items() if owner == user_id][:limit]
+
+    def upsert_summary(self, user_id, session_id, summary, created_at):
+        self.summaries[(user_id, session_id)] = {
+            "session_id": session_id, "resumo": summary, "created_at": created_at, "score": 1.0,
+        }
 
 
 class FakeRagHealth:
@@ -105,10 +133,13 @@ class FakeRetriever:
 @pytest.fixture
 def app_bundle():
     app = create_app({
-        "TESTING": True, "MONGODB_REQUIRED": True,
+        "TESTING": True, "AUTH_REQUIRED": False, "MONGODB_REQUIRED": True,
         "CORS_ORIGINS": ["http://cliente.local"], "SUMMARY_AFTER_MESSAGES": 4,
     })
-    memory = TestMemory("mongodb://unused", "apolloai_test", summary_after=4, client=mongomock.MongoClient())
+    memory = TestMemory(
+        "mongodb://unused", "apolloai_test", summary_after=4,
+        client=mongomock.MongoClient(), semantic_store=FakeSemanticStore(),
+    )
     runtime = FakeRuntime()
     retriever = FakeRetriever()
     redis = FakeRedis()

@@ -1,79 +1,69 @@
 # Resumo
 
-<!-- Descreva brevemente o objetivo desta PR. -->
+<!-- Explique o objetivo desta PR e o resultado esperado. -->
 
 **Issue/Tarefa:** #
 
 ## Alterações
 
-<!-- Liste as principais alterações realizadas. -->
+<!-- Liste as principais alterações implementadas. -->
 
 -
 -
 -
 
-## API
+## API e agentes
 
-<!-- Preencha apenas se aplicável. -->
+<!-- Preencha somente o que se aplicar. -->
 
-- Endpoint(s):
-- Entidade(s):
-- Regra(s) de negócio:
+- Endpoint(s), contrato(s) ou schema(s):
+- Blueprints, serviço(s) ou grafo(s) alterado(s):
+- Agente(s), guardrail(s), prompt(s) ou tool(s) afetado(s):
 
-### Camadas alteradas
+## Dados e integrações
 
-> Marque os itens alterados substituindo `⬜` por `✅`.
+> Marque os itens alterados substituindo `- [ ]` por `- [x]`.
 
-- ⬜ Controller
-- ⬜ Service
-- ⬜ Repository
-- ⬜ Entity
-- ⬜ DTO
-- ⬜ Exception Handler
-- ⬜ Configuração
+- [ ] MongoDB (sessões, mensagens, resumos ou índices)
+- [ ] Redis
+- [ ] Qdrant / RAG / documentos indexados
+- [ ] MCP ou A2A
+- [ ] Autenticação, privacidade ou retenção de dados
+- [ ] Configuração de ambiente (`.env.example`)
+- [ ] OpenAPI ou documentação técnica
+- [ ] Não se aplica
 
-## Banco e Integrações
+## Validação
 
-> Marque apenas o que foi alterado substituindo `⬜` por `✅`.
+> Indique os comandos executados e os resultados relevantes.
 
-- ⬜ Entidades JPA / PostgreSQL
-- ⬜ Migration SQL
-- ⬜ Procedure / Function
-- ⬜ Swagger/OpenAPI
-- ⬜ Spring Security
-- ⬜ NoSQL
-- ⬜ Não se aplica
+- [ ] `python -m pytest`
+- [ ] Testes de integração
+- [ ] Teste manual da API ou interface
+- [ ] Cenários de sucesso, falha e autorização verificados
+- [ ] Não se aplica
 
-## Testes
+**Comandos e resultado:**
 
-> Marque o que foi validado substituindo `⬜` por `✅`.
+```text
+# Ex.: python -m pytest -q
+```
 
-- ⬜ Testes unitários
-- ⬜ Testes de integração
-- ⬜ Teste manual
-- ⬜ Cenários de sucesso e erro
-- ⬜ Não se aplica
+## Impacto e riscos
 
-## Impacto
-
-> Marque os impactos aplicáveis substituindo `⬜` por `✅`.
-
-- ⬜ Front-end
-- ⬜ Banco de dados
-- ⬜ Documentação (Swagger/OpenAPI)
-- ⬜ Infraestrutura/Configuração
-- ⬜ Não há impacto externo
+- Impacto para usuário, API ou operação:
+- Migração, reindexação ou configuração necessária:
+- Plano de reversão, se aplicável:
 
 ## Checklist
 
-> Marque os itens concluídos substituindo `⬜` por `✅`.
+- [ ] A mudança respeita a arquitetura Flask, serviços e grafo de agentes do projeto.
+- [ ] Entradas e saídas continuam validadas pelos schemas e guardrails aplicáveis.
+- [ ] O acesso a sessões e memórias permanece isolado por `user_id`.
+- [ ] Não há segredos, credenciais, PII ou dados de produção versionados.
+- [ ] Métricas, logs e documentação foram atualizados quando necessário.
+- [ ] Alterações em RAG preservam fonte, documento e página quando disponíveis.
 
-- ⬜ Código segue a arquitetura do projeto
-- ⬜ Entradas da API possuem validação adequada
-- ⬜ Exceções retornam respostas HTTP apropriadas
-- ⬜ Documentação (Swagger/OpenAPI) atualizada, quando necessário
-- ⬜ Não há secrets, credenciais ou dados sensíveis versionados
+## Observações para revisão
 
-## Observações
-
-<!-- Informe pontos de atenção para o revisor ou dependências desta PR. -->
+<!-- Informe dependências, limitações conhecidas ou pontos que merecem atenção. -->

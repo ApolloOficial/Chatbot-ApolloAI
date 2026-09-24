@@ -10,6 +10,8 @@ from typing import Any
 from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.errors import PyMongoError
 
+from app.qdrant_store import QdrantSemanticStore, QdrantUnavailable
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +41,7 @@ class MongoMemoryRepository:
 
     def __init__(self, uri: str, database: str, timeout_ms: int = 1500, summary_after: int = 12,
                  max_context: int = 8, lookback_sessions: int = 3, retention_days: int = 180,
-                 client=None) -> None:
+                 client=None, semantic_store: QdrantSemanticStore | None = None) -> None:
         self.client = client or MongoClient(
             uri, serverSelectionTimeoutMS=timeout_ms, connectTimeoutMS=timeout_ms,
             appname="ApolloAI", tz_aware=True,
@@ -53,6 +55,7 @@ class MongoMemoryRepository:
         self.max_context = max_context
         self.lookback_sessions = lookback_sessions
         self.retention_days = retention_days
+        self.semantic_store = semantic_store
         self._indexes_ready = False
 
     @classmethod
@@ -61,6 +64,7 @@ class MongoMemoryRepository:
             config["MONGODB_URI"], config["MONGODB_DATABASE"], config["MONGODB_TIMEOUT_MS"],
             config["SUMMARY_AFTER_MESSAGES"], config["MAX_CONTEXT_MESSAGES"],
             config["MEMORY_LOOKBACK_SESSIONS"], config["RETENTION_DAYS"],
+            semantic_store=QdrantSemanticStore.from_config(config),
         )
 
     def ensure_indexes(self) -> None:
@@ -112,13 +116,7 @@ class MongoMemoryRepository:
             recent = list(self.messages.find(
                 {"user_id": user_id, "session_id": session_id}, {"_id": 0, "role": 1, "content": 1}
             ).sort("created_at", DESCENDING).limit(self.max_context))[::-1]
-            candidates = list(self.summaries.find(
-                {"user_id": user_id, "session_id": {"$ne": session_id}},
-                {"_id": 0, "session_id": 1, "summary": 1, "created_at": 1},
-            ).sort("created_at", DESCENDING).limit(self.lookback_sessions * 3))
-            query_terms = _terms(question)
-            relevant = [item for item in candidates if query_terms & _terms(item.get("summary", ""))]
-            return recent, relevant[: self.lookback_sessions]
+            return recent, self._semantic_summaries(user_id, session_id, question)
         except PyMongoError as error:
             self._raise(error)
 
@@ -173,6 +171,7 @@ class MongoMemoryRepository:
             self.sessions.update_one(
                 {"user_id": user_id, "session_id": session_id}, {"$set": {"summary": summary}},
             )
+            self._index_summary(user_id, session_id, summary, now)
         except PyMongoError as error:
             self._raise(error)
 
@@ -198,10 +197,30 @@ class MongoMemoryRepository:
     def _raise(error: Exception):
         logger.warning("mongodb_indisponivel", extra={"error_type": type(error).__name__})
         raise MemoryUnavailable("Não foi possível persistir a conversa no momento.") from error
+    def _index_summary(self, user_id: str, session_id: str, summary: str, created_at: datetime) -> None:
+        if not self.semantic_store or not self.semantic_store.configured:
+            raise QdrantUnavailable("Qdrant remoto não configurado para memória.")
+        try:
+            self.semantic_store.upsert_summary(user_id, session_id, summary, created_at.isoformat())
+        except Exception as error:
+            logger.warning("qdrant_resumo_nao_indexado", extra={"error_type": type(error).__name__})
+            raise QdrantUnavailable("Não foi possível indexar o resumo no Qdrant.") from error
 
-
-def _terms(text: str) -> set[str]:
-    return {term for term in re.findall(r"[a-zà-ÿ]{4,}", text.lower()) if term not in {"sobre", "como", "para", "qual", "quais"}}
+    def _semantic_summaries(self, user_id: str, session_id: str, question: str) -> list[dict]:
+        if not question:
+            return []
+        if not self.semantic_store or not self.semantic_store.configured:
+            raise QdrantUnavailable("Qdrant remoto não configurado para memória.")
+        try:
+            matches = self.semantic_store.search_summaries(user_id, question, self.lookback_sessions + 1)
+            return [
+                {"session_id": item.get("session_id"), "summary": item.get("resumo", ""),
+                 "created_at": item.get("created_at"), "score": item.get("score")}
+                for item in matches if item.get("session_id") != session_id and item.get("resumo")
+            ][:self.lookback_sessions]
+        except Exception as error:
+            logger.warning("qdrant_memoria_indisponivel", extra={"error_type": type(error).__name__})
+            raise QdrantUnavailable("Não foi possível recuperar a memória no Qdrant.") from error
 
 
 def _deterministic_summary(messages: list[dict]) -> str:

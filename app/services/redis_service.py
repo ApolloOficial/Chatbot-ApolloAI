@@ -1,10 +1,14 @@
-"""Redis opcional para cache, fila e ranking; nunca persiste o histórico."""
+"""Redis remoto obrigatório para ranking de rotas."""
 
 from __future__ import annotations
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class RedisUnavailable(RuntimeError):
+    """Falha controlada ao acessar o Redis."""
 
 
 class RedisSupport:
@@ -38,14 +42,11 @@ class RedisSupport:
 
     def record_route(self, route: str) -> None:
         try:
-            if self._client:
-                self._client.zincrby("apolloai:ranking:rotas", 1, route)
+            if not self._client:
+                raise RedisUnavailable("Redis não configurado.")
+            self._client.zincrby("apolloai:ranking:rotas", 1, route)
+        except RedisUnavailable:
+            raise
         except Exception as error:
-            logger.warning("redis_degradado", extra={"error_type": type(error).__name__})
-
-    def enqueue_indexing(self, document: str) -> bool:
-        try:
-            return bool(self._client and self._client.rpush("apolloai:fila:indexacao", document))
-        except Exception as error:
-            logger.warning("redis_fila_indisponivel", extra={"error_type": type(error).__name__})
-            return False
+            logger.warning("redis_indisponivel", extra={"error_type": type(error).__name__})
+            raise RedisUnavailable("Não foi possível registrar a rota no Redis.") from error
