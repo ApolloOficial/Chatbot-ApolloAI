@@ -11,8 +11,8 @@ if [[ -f "$CONFIG_FILE" ]]; then
   set +a
 fi
 
-: "${APOLLOAI_DOMAIN:?Configure APOLLOAI_DOMAIN}"
-BASE_URL="https://${APOLLOAI_DOMAIN}"
+: "${APOLLOAI_HOST:?Configure APOLLOAI_HOST}"
+BASE_URL="https://${APOLLOAI_HOST}"
 NAMESPACE="${APOLLOAI_NAMESPACE:-apolloai-hml}"
 EVIDENCE_DIR="${EVIDENCE_DIR:-$ROOT_DIR/deploy/k3s/evidence}"
 mkdir -p "$EVIDENCE_DIR"

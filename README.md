@@ -104,7 +104,8 @@ Durante essa validação, acesse `http://localhost:5000/docs` para o Swagger UI,
 
 O ambiente oficial usa K3s em uma única EC2 do AWS Learner Lab. A CI publica a
 imagem com uma tag imutável vinculada ao commit; o K3s executa o Pod atrás do
-Traefik e o cert-manager mantém o HTTPS.
+Traefik e o cert-manager mantêm o HTTPS. O endpoint pode usar diretamente o
+IPv4 público da EC2; um domínio próprio não é obrigatório.
 
 ```bash
 bash deploy/k3s/install.sh
@@ -115,7 +116,7 @@ bash deploy/k3s/deploy.sh
 
 As credenciais são lidas do AWS Secrets Manager pelo `LabInstanceProfile` da
 EC2 e sincronizadas com um Kubernetes Secret. Nenhuma chave AWS é entregue ao
-Pod. Depois da propagação do DNS e da emissão do certificado, execute:
+Pod. Depois da emissão do certificado, execute:
 
 ```bash
 bash deploy/k3s/validate.sh

@@ -2,15 +2,15 @@
 
 O ambiente de homologação usa K3s em uma única EC2. O overlay
 `deploy/k8s/overlays/hml` contém Namespace, Deployment, Service e
-ServiceAccount. `deploy/k3s/render.py` acrescenta ConfigMap, ClusterIssuer e
-Ingress com valores validados no momento do deploy.
+ServiceAccount. `deploy/k3s/render.py` acrescenta ConfigMap, ClusterIssuer,
+Certificate, TLSStore e Ingress com valores validados no momento do deploy.
 
 ## Propriedades do ambiente
 
 - uma réplica para respeitar a memória e o orçamento;
 - atualização `Recreate`, evitando duas réplicas simultâneas;
 - Traefik como Ingress Controller;
-- TLS automático com cert-manager e Let's Encrypt;
+- TLS automático com cert-manager e Let's Encrypt, inclusive no IPv4 público;
 - probes `/live` e `/health`;
 - execução sem root e sem token Kubernetes montado no Pod;
 - segredos obtidos do AWS Secrets Manager pelo perfil da EC2;

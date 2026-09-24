@@ -9,8 +9,8 @@ de US$ 73 por mês, antes da EC2, EBS e IPv4, e ultrapassa o orçamento de US$ 5
 
 ```mermaid
 flowchart LR
-    Client[Aplicativo ou agente externo] -->|HTTPS| DNS[DNS público]
-    DNS --> Traefik[Traefik no K3s]
+    Client[Aplicativo ou agente externo] -->|HTTPS| Public[IPv4 público ou DNS]
+    Public --> Traefik[Traefik no K3s]
     Traefik --> API[Pod ApolloAI]
     API --> Groq[Groq Free]
     API --> Mongo[MongoDB remoto]
@@ -23,7 +23,8 @@ flowchart LR
 ```
 
 O K3s utiliza o Traefik incluído na distribuição. O cert-manager solicita e
-renova o certificado TLS. O ServiceAccount identifica o Pod apenas dentro do
+renova o certificado TLS. Para um IPv4, usa o perfil curto do Let's Encrypt; um
+domínio próprio é opcional. O ServiceAccount identifica o Pod apenas dentro do
 Kubernetes. O acesso ao Secrets Manager é feito pelo `LabInstanceProfile` da
 EC2, sem credenciais AWS permanentes no Pod.
 
@@ -55,7 +56,7 @@ Confirme antes do deploy:
 - Redis remoto com URI `rediss://`;
 - Qdrant Cloud com `rag_chunks` e `memoria_resumos` indexadas;
 - conta Groq sem forma de pagamento e modelo `openai/gpt-oss-20b` habilitado;
-- domínio ou subdomínio controlado pela equipe;
+- IPv4 público estável ou domínio controlado pela equipe;
 - imagem pública no GHCR com tag `sha-<commit completo>`.
 
 ## 2. Configurar a EC2
@@ -106,18 +107,21 @@ O script instala K3s, Traefik e cert-manager `v1.21.2`. Os Kubernetes Secrets
 são criptografados no armazenamento do K3s. O kubeconfig fica em
 `~/.kube/config` com permissão `600`.
 
-## 5. Configurar domínio e deploy
+## 5. Configurar endpoint e deploy
 
-Crie no DNS um registro `A` apontando o domínio para o IPv4 público da EC2.
-Depois prepare a configuração sem credenciais:
+Use diretamente o IPv4 público da EC2 em `APOLLOAI_HOST`. Se a equipe possuir
+um domínio, também pode criar um registro `A` e informar o hostname. Depois
+prepare a configuração sem credenciais:
 
 ```bash
 cp deploy/k3s/deploy.env.example deploy/k3s/deploy.env
 nano deploy/k3s/deploy.env
 ```
 
-Preencha a tag exata da imagem, domínio, origem CORS, URL do Qdrant, e-mail ACME,
-identificador do segredo e região. O arquivo é ignorado pelo Git.
+Preencha a tag exata da imagem, IPv4 ou hostname público, origem CORS, URL do
+Qdrant, e-mail ACME, identificador do segredo e região. Para o IPv4
+`98.84.34.155`, use `CORS_ORIGINS=https://98.84.34.155`. O arquivo é ignorado
+pelo Git.
 
 Implante:
 
@@ -131,7 +135,7 @@ recebe chaves AWS.
 
 ## 6. Validar e coletar evidências
 
-Depois que o DNS propagar e o certificado ficar pronto:
+Depois que o certificado ficar pronto:
 
 ```bash
 kubectl -n apolloai-hml get pods,service,ingress,certificate

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import re
 import subprocess
@@ -15,10 +16,16 @@ IMAGE = "ghcr.io/apollooficial/chatbot-apolloai"
 NAMESPACE = "apolloai-hml"
 
 
-def _hostname(value: str) -> str:
+def _public_host(value: str) -> str:
     value = value.strip().lower()
-    if not re.fullmatch(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", value):
-        raise argparse.ArgumentTypeError("domínio inválido")
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        if re.fullmatch(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", value):
+            return value
+        raise argparse.ArgumentTypeError("host público inválido") from None
+    if address.version != 4 or not address.is_global:
+        raise argparse.ArgumentTypeError("o IPv4 deve ser público")
     return value
 
 
@@ -45,7 +52,7 @@ def _quoted(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def _config_map(domain: str, cors_origin: str, qdrant_url: str) -> str:
+def _config_map(host: str, cors_origin: str, qdrant_url: str) -> str:
     values = {
         "AUTH_REQUIRED": "true",
         "MONGODB_DATABASE": "apollo_ai_hml",
@@ -55,7 +62,7 @@ def _config_map(domain: str, cors_origin: str, qdrant_url: str) -> str:
         "REDIS_TIMEOUT_SECONDS": "5",
         "MCP_REQUIRED": "true",
         "MCP_SERVER_COMMAND": "python -m app.mcp_server",
-        "PUBLIC_BASE_URL": f"https://{domain}",
+        "PUBLIC_BASE_URL": f"https://{host}",
         "CORS_ORIGINS": cors_origin,
         "AI_PROVIDER": "groq",
         "AI_MODEL": "openai/gpt-oss-20b",
@@ -83,17 +90,19 @@ data:
 """
 
 
-def _issuer(email: str) -> str:
+def _issuer(email: str, ip_address: bool) -> str:
+    name = "letsencrypt-shortlived" if ip_address else "letsencrypt-production"
+    profile = "\n    profile: shortlived" if ip_address else ""
     return f"""apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt-production
+  name: {name}
 spec:
   acme:
     email: {_quoted(email)}
-    server: https://acme-v02.api.letsencrypt.org/directory
+    server: https://acme-v02.api.letsencrypt.org/directory{profile}
     privateKeySecretRef:
-      name: letsencrypt-production-account
+      name: {name}-account
     solvers:
       - http01:
           ingress:
@@ -101,7 +110,62 @@ spec:
 """
 
 
-def _ingress(domain: str) -> str:
+def _ip_certificate(host: str) -> str:
+    return f"""apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: apolloai-hml-tls
+  namespace: {NAMESPACE}
+spec:
+  secretName: apolloai-hml-tls
+  issuerRef:
+    name: letsencrypt-shortlived
+    kind: ClusterIssuer
+  ipAddresses:
+    - {host}
+  renewBefore: 48h
+  privateKey:
+    rotationPolicy: Always
+"""
+
+
+def _tls_store() -> str:
+    return f"""apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: {NAMESPACE}
+spec:
+  defaultCertificate:
+    secretName: apolloai-hml-tls
+"""
+
+
+def _ingress(host: str, ip_address: bool) -> str:
+    if ip_address:
+        return f"""apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apolloai
+  namespace: {NAMESPACE}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - secretName: apolloai-hml-tls
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: apolloai
+                port:
+                  name: http
+"""
     return f"""apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -115,10 +179,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - {domain}
+        - {host}
       secretName: apolloai-hml-tls
   rules:
-    - host: {domain}
+    - host: {host}
       http:
         paths:
           - path: /
@@ -140,8 +204,15 @@ def render(args: argparse.Namespace) -> str:
     base, replacements = re.subn(image_pattern, rf"\g<1>{IMAGE}:{args.image_tag}", base)
     if replacements != 1:
         raise RuntimeError("não foi possível identificar uma única imagem ApolloAI no manifesto")
-    documents = [base.rstrip(), _config_map(args.domain, args.cors_origin, args.qdrant_url).rstrip(),
-                 _issuer(args.acme_email).rstrip(), _ingress(args.domain).rstrip()]
+    ip_address = isinstance(ipaddress.ip_address(args.host), ipaddress.IPv4Address) if re.fullmatch(r"[0-9.]+", args.host) else False
+    documents = [
+        base.rstrip(),
+        _config_map(args.host, args.cors_origin, args.qdrant_url).rstrip(),
+        _issuer(args.acme_email, ip_address).rstrip(),
+    ]
+    if ip_address:
+        documents.extend((_ip_certificate(args.host).rstrip(), _tls_store().rstrip()))
+    documents.append(_ingress(args.host, ip_address).rstrip())
     rendered = "\n---\n".join(documents) + "\n"
     forbidden = (".invalid", "replace-with", "CHANGE_ME")
     if any(marker in rendered for marker in forbidden):
@@ -151,7 +222,7 @@ def render(args: argparse.Namespace) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--domain", required=True, type=_hostname)
+    parser.add_argument("--host", required=True, type=_public_host)
     parser.add_argument("--cors-origin", required=True, type=_https_url)
     parser.add_argument("--qdrant-url", required=True, type=_https_url)
     parser.add_argument("--image-tag", required=True, type=_image_tag)

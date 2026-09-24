@@ -32,8 +32,9 @@ somente quando MongoDB, Redis, Qdrant e MCP estão disponíveis.
 
 `deploy/k8s/base` contém recursos independentes do ambiente. O overlay de
 homologação reduz o consumo para um único nó K3s. ConfigMap, Ingress e emissor
-TLS são gerados por `deploy/k3s/render.py`, que valida domínio, HTTPS, e-mail e
-tag da imagem antes de produzir YAML.
+TLS são gerados por `deploy/k3s/render.py`, que valida IPv4 ou hostname público,
+HTTPS, e-mail e tag da imagem antes de produzir YAML. Endereços IPv4 usam o
+perfil ACME `shortlived` e renovação automática.
 
 O Secret não possui arquivo de exemplo com valores substituíveis. Seu contrato
 é definido por estas chaves no AWS Secrets Manager:

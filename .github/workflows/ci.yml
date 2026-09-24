@@ -66,8 +66,8 @@ jobs:
       - name: Render the AWS Lab overlay
         run: |
           python deploy/k3s/render.py \
-            --domain api-hml.apolloai.example.com \
-            --cors-origin https://app-hml.apolloai.example.com \
+            --host 98.84.34.155 \
+            --cors-origin https://98.84.34.155 \
             --qdrant-url https://cluster.aws.cloud.qdrant.io:6333 \
             --image-tag sha-0000000000000000000000000000000000000000 \
             --acme-email equipe@apolloai.example.com \
@@ -78,6 +78,10 @@ jobs:
           fi
           grep -q 'ingressClassName: traefik' /tmp/apolloai-k3s.yaml
           grep -q 'kind: ClusterIssuer' /tmp/apolloai-k3s.yaml
+          grep -q 'profile: shortlived' /tmp/apolloai-k3s.yaml
+          grep -q 'kind: Certificate' /tmp/apolloai-k3s.yaml
+          grep -q 'kind: TLSStore' /tmp/apolloai-k3s.yaml
+          grep -q '98.84.34.155' /tmp/apolloai-k3s.yaml
           grep -q 'kind: Deployment' /tmp/apolloai-k3s.yaml
 
   publish-image:

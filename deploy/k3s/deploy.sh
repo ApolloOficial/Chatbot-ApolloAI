@@ -18,7 +18,7 @@ source "$CONFIG_FILE"
 set +a
 
 : "${APOLLOAI_IMAGE_TAG:?Configure APOLLOAI_IMAGE_TAG}"
-: "${APOLLOAI_DOMAIN:?Configure APOLLOAI_DOMAIN}"
+: "${APOLLOAI_HOST:?Configure APOLLOAI_HOST}"
 : "${CORS_ORIGINS:?Configure CORS_ORIGINS}"
 : "${QDRANT_URL:?Configure QDRANT_URL}"
 : "${ACME_EMAIL:?Configure ACME_EMAIL}"
@@ -29,14 +29,15 @@ kubectl apply -f "$ROOT_DIR/deploy/k8s/overlays/hml/namespace.yaml" >/dev/null
 bash "$ROOT_DIR/deploy/k3s/sync-secret.sh"
 
 python3 "$ROOT_DIR/deploy/k3s/render.py" \
-  --domain "$APOLLOAI_DOMAIN" \
+  --host "$APOLLOAI_HOST" \
   --cors-origin "$CORS_ORIGINS" \
   --qdrant-url "$QDRANT_URL" \
   --image-tag "$APOLLOAI_IMAGE_TAG" \
   --acme-email "$ACME_EMAIL" >"$RENDERED"
 
 kubectl apply -f "$RENDERED"
+kubectl -n apolloai-hml wait --for=condition=Ready certificate/apolloai-hml-tls --timeout=5m
 kubectl -n apolloai-hml rollout status deployment/apolloai --timeout=5m
 kubectl -n apolloai-hml get pods,service,ingress,certificate
 
-echo "Implantação aplicada. Aguarde o DNS e valide https://${APOLLOAI_DOMAIN}/live."
+echo "Implantação aplicada. Aguarde o certificado e valide https://${APOLLOAI_HOST}/live."
