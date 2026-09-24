@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG_FILE="${1:-$ROOT_DIR/deploy/k3s/deploy.env}"
 RENDERED="$(mktemp)"
+export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config}"
 trap 'rm -f -- "$RENDERED"' EXIT
 
 if [[ ! -f "$CONFIG_FILE" ]]; then

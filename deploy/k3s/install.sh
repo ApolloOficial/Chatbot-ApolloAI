@@ -20,6 +20,7 @@ mkdir -p "$HOME/.kube"
 sudo cp /etc/rancher/k3s/k3s.yaml "$HOME/.kube/config"
 sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
 chmod 600 "$HOME/.kube/config"
+export KUBECONFIG="$HOME/.kube/config"
 
 kubectl wait --for=condition=Ready node --all --timeout=180s
 for attempt in $(seq 1 90); do

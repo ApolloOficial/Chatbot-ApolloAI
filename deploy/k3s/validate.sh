@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG_FILE="${1:-$ROOT_DIR/deploy/k3s/deploy.env}"
+export KUBECONFIG="${KUBECONFIG:-$HOME/.kube/config}"
 if [[ -f "$CONFIG_FILE" ]]; then
   set -a
   # shellcheck disable=SC1090
