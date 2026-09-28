@@ -59,10 +59,50 @@ Confirme antes do deploy:
 - IPv4 público estável ou domínio controlado pela equipe;
 - imagem pública no GHCR com tag `sha-<commit completo>`.
 
-## 2. Configurar a EC2
+## 2. Criar a EC2 pelo CloudShell
 
-Use Amazon Linux 2023 `x86_64`, 8 GB de EBS gp3 e o perfil
-`LabInstanceProfile`. Libere no Security Group:
+Inicie o Learner Lab, abra o console AWS e selecione `us-east-1`. Abra o
+CloudShell pelo ícone de terminal do console. O CloudShell já recebe a
+identidade temporária do laboratório; não copie `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY` ou `AWS_SESSION_TOKEN` para a EC2.
+
+No CloudShell, confira a conta e obtenha o repositório:
+
+```bash
+aws sts get-caller-identity --query Account --output text
+git clone -b feat/aws-learner-lab https://github.com/ApolloOficial/Chatbot-ApolloAI.git
+cd Chatbot-ApolloAI
+bash deploy/aws/provision_ec2.sh
+```
+
+Se o repositório já existir no CloudShell, use `cd Chatbot-ApolloAI` e
+`git pull --ff-only` antes de executar o script. Ele cria ou reutiliza:
+
+- Amazon Linux 2023 `x86_64` em uma `t3.small`;
+- 8 GB de EBS gp3;
+- perfil `LabInstanceProfile`;
+- chave SSH armazenada em `~/.ssh/apolloai-cloudshell.pem`;
+- Security Group com porta 22 apenas para o IPv4 atual do CloudShell e portas
+  80 e 443 públicas.
+
+O comando final impresso pelo script tem este formato:
+
+```bash
+ssh -i /home/cloudshell-user/.ssh/apolloai-cloudshell.pem ec2-user@NOVO_IPV4
+```
+
+Execute exatamente o comando apresentado. Na EC2, aguarde a preparação e
+baixe o projeto:
+
+```bash
+sudo cloud-init status --wait
+docker version
+git --version
+git clone -b feat/aws-learner-lab https://github.com/ApolloOficial/Chatbot-ApolloAI.git
+cd Chatbot-ApolloAI
+```
+
+O Security Group criado pelo script permite:
 
 - porta 22 somente para o IP da equipe;
 - portas 80 e 443 para os clientes;
@@ -71,7 +111,7 @@ Use Amazon Linux 2023 `x86_64`, 8 GB de EBS gp3 e o perfil
 Associe um IPv4 estável enquanto o ambiente estiver em uso. Ao excluir a
 implantação, libere também a Elastic IP e o volume para interromper a cobrança.
 
-## 3. Criar o segredo
+## 3. Recriar o segredo
 
 No AWS Secrets Manager, em `us-east-1`, crie `apolloai/hml` como JSON:
 

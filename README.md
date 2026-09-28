@@ -107,6 +107,16 @@ imagem com uma tag imutável vinculada ao commit; o K3s executa o Pod atrás do
 Traefik e o cert-manager mantêm o HTTPS. O endpoint pode usar diretamente o
 IPv4 público da EC2; um domínio próprio não é obrigatório.
 
+No AWS CloudShell, crie a EC2 e use o comando SSH exibido:
+
+```bash
+git clone -b feat/aws-learner-lab https://github.com/ApolloOficial/Chatbot-ApolloAI.git
+cd Chatbot-ApolloAI
+bash deploy/aws/provision_ec2.sh
+```
+
+Depois de conectar à EC2 e clonar o repositório nela:
+
 ```bash
 bash deploy/k3s/install.sh
 cp deploy/k3s/deploy.env.example deploy/k3s/deploy.env

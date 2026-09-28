@@ -62,7 +62,7 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
       - name: Check deployment scripts
-        run: shellcheck deploy/k3s/*.sh
+        run: shellcheck deploy/aws/*.sh deploy/k3s/*.sh
       - name: Render the AWS Lab overlay
         run: |
           python deploy/k3s/render.py \
