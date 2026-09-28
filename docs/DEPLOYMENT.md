@@ -1,24 +1,49 @@
 # Implantação
 
-## Serviços remotos
+## AWS Learner Lab
 
-`docker compose up --build` inicia o ApolloAI somente com MongoDB, Redis e Qdrant remotos definidos no `.env`. O processo recusa URLs locais e configurações sem a chave do Qdrant. `/live` verifica somente o processo Flask/Gunicorn; `/health` verifica MongoDB, Redis, as coleções remotas de RAG e o handshake MCP. O padrão usa Groq no plano gratuito com `AI_PROVIDER=groq`, `AI_MODEL` e `GROQ_API_KEY`, sem fallback automático.
+A implantação oficial usa K3s em uma única EC2. Essa escolha fornece Kubernetes
+e mantém o orçamento abaixo de US$ 50 sem o custo fixo do EKS. Consulte
+[AWS_LEARNER_LAB.md](AWS_LEARNER_LAB.md).
 
-## AWS Academy Learner Lab
+O fluxo é:
 
-O Learner Lab fornecido à equipe não lista Amazon Bedrock entre os serviços permitidos. Para preservar o orçamento de US$ 50, a implantação recomendada usa uma única instância EC2 com Docker, e não EKS. O procedimento, os limites e a estimativa estão em [AWS_LEARNER_LAB.md](AWS_LEARNER_LAB.md).
+1. a CI testa o código e os manifestos;
+2. a CI publica uma imagem imutável `sha-<commit completo>` no GHCR;
+3. a EC2 executa K3s com Traefik;
+4. o `LabInstanceProfile` lê um segredo no AWS Secrets Manager;
+5. o script cria `apolloai-secrets` sem expor valores;
+6. o renderizador injeta apenas configurações públicas no manifesto;
+7. cert-manager emite o certificado HTTPS;
+8. a homologação remota coleta saúde, chat, A2A, MCP, RAG e métricas.
 
-## Kubernetes e cloud
+## Serviços obrigatoriamente remotos
 
-`deploy/k8s` fornece uma base independente de provedor com Deployment, Service, ConfigMap, recursos, security context e probes. Antes de aplicar:
+- MongoDB com `mongodb+srv://`;
+- Redis com `rediss://`;
+- Qdrant com HTTPS e chave de API;
+- Groq no plano gratuito, sem fallback de provedor.
 
-1. publique uma imagem imutável e substitua `image` em `deploy/k8s/base/deployment.yaml` ou use a transformação `images` de um overlay;
-2. substitua os domínios `.invalid` do ConfigMap por meio de um overlay;
-3. crie `apolloai-secrets` usando o secret manager da cloud, tomando `secret.example.yaml` apenas como contrato;
-4. forneça MongoDB, Redis e Qdrant remotos e a chave Groq pelo gerenciador de segredos;
-5. configure Ingress/Gateway com TLS;
-6. execute `kubectl kustomize deploy/k8s` para revisar o manifesto e, somente no ambiente autorizado, aplique-o.
+O processo recusa URLs locais, ausência de autenticação e dependências
+obrigatórias desabilitadas. `/live` verifica o processo; `/health` retorna 200
+somente quando MongoDB, Redis, Qdrant e MCP estão disponíveis.
 
-O arquivo de exemplo de Secret contém apenas marcadores e não faz parte de `kustomization.yaml`. A configuração exige autenticação, MongoDB, Redis, Qdrant e MCP. O deploy real depende da escolha da cloud, registro de imagens, domínio, identidade IAM e credenciais da equipe; nenhum desses estados externos é alegado pelo repositório.
+## Kubernetes
 
-O overlay pronto para personalização do ambiente de homologação está em `deploy/k8s/overlays/hml`. Consulte o passo a passo em [HOMOLOGATION_KUBERNETES.md](HOMOLOGATION_KUBERNETES.md). Os placeholders impedem uma publicação acidental antes de a equipe definir imagem, domínio e segredos reais.
+`deploy/k8s/base` contém recursos independentes do ambiente. O overlay de
+homologação reduz o consumo para um único nó K3s. ConfigMap, Ingress e emissor
+TLS são gerados por `deploy/k3s/render.py`, que valida IPv4 ou hostname público,
+HTTPS, e-mail e tag da imagem antes de produzir YAML. Endereços IPv4 usam o
+perfil ACME `shortlived` e renovação automática.
+
+O Secret não possui arquivo de exemplo com valores substituíveis. Seu contrato
+é definido por estas chaves no AWS Secrets Manager:
+
+- `APOLLOAI_API_TOKEN`;
+- `GROQ_API_KEY`;
+- `QDRANT_API_KEY`;
+- `MONGODB_URI`;
+- `REDIS_URL`.
+
+O ServiceAccount não recebe IAM Role. Em K3s, o host EC2 usa o
+`LabInstanceProfile` somente durante a sincronização do segredo.

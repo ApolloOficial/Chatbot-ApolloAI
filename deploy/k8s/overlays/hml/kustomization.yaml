@@ -4,14 +4,8 @@ namespace: apolloai-hml
 resources:
   - namespace.yaml
   - ../../base
-  - ingress.yaml
 patches:
-  - path: configmap-patch.yaml
   - path: deployment-patch.yaml
-images:
-  - name: ghcr.io/apollooficial/chatbot-apolloai
-    newName: ghcr.io/apollooficial/chatbot-apolloai
-    newTag: replace-with-commit-sha
 labels:
   - pairs:
       app.kubernetes.io/name: apolloai

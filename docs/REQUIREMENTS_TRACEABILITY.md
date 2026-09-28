@@ -21,5 +21,7 @@
 | Autenticação do cliente | Bearer e identidade confiável `X-User-ID` configuráveis em `app/auth.py` |
 | Qualidade do RAG | dataset versionado e gate de hit rate/MRR em `scripts/evaluate_rag.py` |
 | CI e code review | `.github/workflows/ci.yml` e `.github/PULL_REQUEST_TEMPLATE.md` |
+| Cloud, container e orquestração | K3s em EC2, manifestos em `deploy/k8s` e automação em `deploy/k3s` |
+| Credenciais fora do Git | `.gitignore`, AWS Secrets Manager e gate `scripts/check_tracked_secrets.py` na CI |
 
 Os testes automatizados verificam rotas, segurança, RAG, A2A, juiz, memória, falhas, Flask, CORS, WSGI e ausência de FastAPI/PostgreSQL. A CI executa testes isolados e constrói a imagem; testes MCP e avaliação RAG reais exigem serviços remotos e são executados separadamente.
