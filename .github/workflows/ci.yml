@@ -1,4 +1,4 @@
-name: ApolloAI CI
+name: CI
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   tests:
-    name: ci/unit-tests (Python ${{ matrix.python-version }})
+    name: unit-tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -36,9 +36,9 @@ jobs:
         run: python -m pip check
       - name: Run isolated test suite
         run: python -m pytest -m "not integration" -q
-        
+
   container-smoke:
-    name: ci/container-smoke
+    name: docker-build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -48,7 +48,7 @@ jobs:
         run: docker build -t apolloai-ci .
 
   secret-scan:
-    name: ci/secret-scan
+    name: secret-scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -60,7 +60,7 @@ jobs:
         run: python scripts/check_tracked_secrets.py
 
   k3s-manifest-smoke:
-    name: Render K3s manifests (Apollo)
+    name: k3s-manifests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -92,7 +92,7 @@ jobs:
           grep -q 'kind: Deployment' /tmp/apolloai-k3s.yaml
 
   publish-image:
-    name: Publish commit image (Apollo)
+    name: publish-image
     if: github.event_name == 'push'
     needs: [tests, container-smoke, secret-scan, k3s-manifest-smoke]
     runs-on: ubuntu-latest
