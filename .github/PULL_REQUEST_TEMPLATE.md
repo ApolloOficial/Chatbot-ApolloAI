@@ -1,69 +1,88 @@
 # Resumo
 
-<!-- Explique o objetivo desta PR e o resultado esperado. -->
+<!-- Descreva brevemente o objetivo desta PR. -->
 
-**Issue/Tarefa:** #
+**Card do Jira:** #
 
 ## Alterações
 
-<!-- Liste as principais alterações implementadas. -->
+<!-- Liste as principais alterações realizadas. -->
 
 -
 -
 -
 
-## API e agentes
+## API
 
-<!-- Preencha somente o que se aplicar. -->
+<!-- Preencha apenas se aplicável. -->
 
-- Endpoint(s), contrato(s) ou schema(s):
-- Blueprints, serviço(s) ou grafo(s) alterado(s):
-- Agente(s), guardrail(s), prompt(s) ou tool(s) afetado(s):
+- Endpoint(s):
+- Schema(s) / contrato(s):
+- Regra(s) de negócio:
 
-## Dados e integrações
+### Camadas alteradas
 
-> Marque os itens alterados substituindo `- [ ]` por `- [x]`.
+> Marque os itens alterados substituindo `⬜` por `✅`.
 
-- [ ] MongoDB (sessões, mensagens, resumos ou índices)
-- [ ] Redis
-- [ ] Qdrant / RAG / documentos indexados
-- [ ] MCP ou A2A
-- [ ] Autenticação, privacidade ou retenção de dados
-- [ ] Configuração de ambiente (`.env.example`)
-- [ ] OpenAPI ou documentação técnica
-- [ ] Não se aplica
+- ⬜ Blueprint / rota
+- ⬜ Serviço
+- ⬜ Grafo / nó de agente
+- ⬜ Prompt / agente LangChain
+- ⬜ Guardrail / juiz factual
+- ⬜ Schema / validação
+- ⬜ OpenAPI / configuração
 
-## Validação
+## Dados e Integrações
 
-> Indique os comandos executados e os resultados relevantes.
+> Marque apenas o que foi alterado substituindo `⬜` por `✅`.
 
-- [ ] `python -m pytest`
-- [ ] Testes de integração
-- [ ] Teste manual da API ou interface
-- [ ] Cenários de sucesso, falha e autorização verificados
-- [ ] Não se aplica
+- ⬜ MongoDB (sessões, mensagens ou memória)
+- ⬜ Redis (ranking de rotas)
+- ⬜ Qdrant / RAG / fontes
+- ⬜ MCP
+- ⬜ A2A
+- ⬜ Autenticação / privacidade
+- ⬜ Não se aplica
 
-**Comandos e resultado:**
+## Testes
+
+> Marque o que foi validado substituindo `⬜` por `✅`.
+
+- ⬜ Testes unitários
+- ⬜ Testes de integração
+- ⬜ Avaliação RAG
+- ⬜ Teste manual
+- ⬜ Cenários de sucesso e erro
+- ⬜ Não se aplica
+
+**Comandos executados e resultado:**
 
 ```text
-# Ex.: python -m pytest -q
+<!-- Ex.: python -m pytest -m "not integration" -q -->
 ```
 
-## Impacto e riscos
+## Impacto
 
-- Impacto para usuário, API ou operação:
-- Migração, reindexação ou configuração necessária:
-- Plano de reversão, se aplicável:
+> Marque os impactos aplicáveis substituindo `⬜` por `✅`.
+
+- ⬜ API / cliente mobile
+- ⬜ Dados ou memória
+- ⬜ Fontes / índice RAG
+- ⬜ Documentação
+- ⬜ Infraestrutura / configuração
+- ⬜ Não há impacto externo
 
 ## Checklist
 
-- [ ] A mudança respeita a arquitetura Flask, serviços e grafo de agentes do projeto.
-- [ ] Entradas e saídas continuam validadas pelos schemas e guardrails aplicáveis.
-- [ ] O acesso a sessões e memórias permanece isolado por `user_id`.
-- [ ] Não há segredos, credenciais, PII ou dados de produção versionados.
-- [ ] Métricas, logs e documentação foram atualizados quando necessário.
-- [ ] Alterações em RAG preservam fonte, documento e página quando disponíveis.
+> Marque os itens concluídos substituindo `⬜` por `✅`.
 
-## Observações para revisão
+- ⬜ Código segue a arquitetura Flask e o fluxo de agentes do projeto
+- ⬜ Entradas e saídas possuem validação adequada
+- ⬜ Sessões e memórias permanecem isoladas por `user_id`
+- ⬜ Alterações no RAG preservam fonte e página quando disponíveis
+- ⬜ Não há secrets, credenciais ou dados sensíveis versionados
+- ⬜ Documentação e métricas atualizadas, quando necessário
 
-<!-- Informe dependências, limitações conhecidas ou pontos que merecem atenção. -->
+## Observações
+
+<!-- Informe pontos de atenção, migrações, reindexação ou dependências desta PR. -->

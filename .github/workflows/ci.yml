@@ -1,13 +1,13 @@
-name: ApolloAI CI
+name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -15,23 +15,30 @@ concurrency:
 
 jobs:
   tests:
-    name: Unit and protocol tests
+    name: unit-tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+      - name: Check dependency consistency
+        run: python -m pip check
       - name: Run isolated test suite
         run: python -m pytest -m "not integration" -q
+
   container-smoke:
-    name: Container image build
+    name: docker-build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -41,7 +48,7 @@ jobs:
         run: docker build -t apolloai-ci .
 
   secret-scan:
-    name: Tracked credential scan
+    name: secret-scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -53,7 +60,7 @@ jobs:
         run: python scripts/check_tracked_secrets.py
 
   k3s-manifest-smoke:
-    name: Render K3s manifests
+    name: k3s-manifests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -68,7 +75,7 @@ jobs:
           python deploy/k3s/render.py \
             --host 98.84.34.155 \
             --cors-origin https://98.84.34.155 \
-            --qdrant-url https://cluster.aws.cloud.qdrant.io:6333 \
+            --qdrant-url https://qdrant.example.com:6333 \
             --image-tag sha-0000000000000000000000000000000000000000 \
             --acme-email equipe@apolloai.example.com \
             > /tmp/apolloai-k3s.yaml
@@ -85,11 +92,14 @@ jobs:
           grep -q 'kind: Deployment' /tmp/apolloai-k3s.yaml
 
   publish-image:
-    name: Publish commit image
+    name: publish-image
     if: github.event_name == 'push'
     needs: [tests, container-smoke, secret-scan, k3s-manifest-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
