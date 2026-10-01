@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -16,21 +15,28 @@ concurrency:
 
 jobs:
   tests:
-    name: ci/unit-tests
+    name: ci/unit-tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
+      - name: Check dependency consistency
+        run: python -m pip check
       - name: Run isolated test suite
         run: python -m pytest -m "not integration" -q
+        
   container-smoke:
     name: ci/container-smoke
     runs-on: ubuntu-latest
@@ -67,8 +73,8 @@ jobs:
       - name: Render the AWS Lab overlay
         run: |
           python deploy/k3s/render.py \
-            --host 203.0.113.10 \
-            --cors-origin https://203.0.113.10 \
+            --host 98.84.34.155 \
+            --cors-origin https://98.84.34.155 \
             --qdrant-url https://qdrant.example.com:6333 \
             --image-tag sha-0000000000000000000000000000000000000000 \
             --acme-email equipe@apolloai.example.com \
@@ -91,6 +97,9 @@ jobs:
     needs: [tests, container-smoke, secret-scan, k3s-manifest-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
