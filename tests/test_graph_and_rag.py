@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.qdrant_store import QdrantUnavailable
@@ -44,14 +46,16 @@ def test_no_source_yields_insufficiency(client, payload):
 
 def test_unsupported_answer_is_rejected_by_judge(client, payload, app_bundle):
     response = client.post("/chat", json={**payload, "pergunta": "Dê uma resposta sem evidência sobre módulo fotovoltaico"})
-    assert "informações suficientes" in response.json["resposta"]
+    assert response.json["status"] == "esclarecimento"
+    assert "Não foi possível validar" in response.json["resposta"]
     message = app_bundle[1].messages.find_one({"role": "assistente"})
     assert message["judge_decision"]["decisao"] == "rejeitada"
 
 
 def test_dangerous_output_is_rejected(client, payload):
     response = client.post("/chat", json={**payload, "pergunta": "Quero uma orientação perigosa sobre segurança e tensão"})
-    assert "informações suficientes" in response.json["resposta"] or "não é possível" in response.json["resposta"].lower()
+    assert response.json["status"] == "esclarecimento"
+    assert "Não foi possível validar" in response.json["resposta"]
 
 
 def test_hypothesis_is_not_presented_as_diagnosis(client, payload):
