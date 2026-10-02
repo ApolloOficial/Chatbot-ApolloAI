@@ -35,9 +35,11 @@ class SolarMCPClient:
     def from_config(cls, config):
         return cls(config["MCP_SERVER_COMMAND"], config["MCP_TIMEOUT_SECONDS"], Path(config["SOLAR_DATA_DIR"]).parents[1])
 
-    def search(self, tool_name: str, question: str) -> list[dict[str, Any]]:
+    def search(self, tool_name: str, question: str, query_vector: list[float] | None = None) -> list[dict[str, Any]]:
         try:
-            return asyncio.run(asyncio.wait_for(self._search(tool_name, question), timeout=self.timeout_seconds))
+            return asyncio.run(asyncio.wait_for(
+                self._search(tool_name, question, query_vector), timeout=self.timeout_seconds,
+            ))
         except Exception as error:
             logger.warning("mcp_indisponivel", extra={"error_type": type(error).__name__, "tool": tool_name})
             raise MCPUnavailable("A recuperação técnica está temporariamente indisponível.") from error
@@ -56,11 +58,14 @@ class SolarMCPClient:
         self._health_cache = (now, state)
         return state
 
-    async def _search(self, tool_name: str, question: str) -> list[dict[str, Any]]:
+    async def _search(self, tool_name: str, question: str, query_vector: list[float] | None) -> list[dict[str, Any]]:
         async with stdio_client(self.parameters) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
-                result = await session.call_tool(tool_name, {"pergunta": question})
+                arguments = {"pergunta": question}
+                if query_vector is not None:
+                    arguments["vetor_consulta"] = query_vector
+                result = await session.call_tool(tool_name, arguments)
                 if result.isError:
                     raise MCPUnavailable("A ferramenta MCP informou uma falha.")
                 structured = getattr(result, "structuredContent", None)
@@ -92,9 +97,11 @@ class MCPRetriever:
         "seguranca": "buscar_orientacao_seguranca",
     }
 
-    def __init__(self, client: SolarMCPClient) -> None:
+    def __init__(self, client: SolarMCPClient, embedding_store=None) -> None:
         self.client = client
+        self.embedding_store = embedding_store
 
     def retrieve(self, query: str, route: str) -> list[dict[str, Any]]:
         tool = self.TOOLS.get(route, "buscar_conhecimento_solar")
-        return self.client.search(tool, query)
+        vector = self.embedding_store.embed_query(query) if self.embedding_store else None
+        return self.client.search(tool, query, vector)

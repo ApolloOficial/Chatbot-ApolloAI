@@ -1,4 +1,4 @@
-"""Grafo multiagente real: guardrail → roteador → especialista → juiz → orquestrador."""
+"""Grafo multiagente: guardrail → roteador → especialista → orquestrador → juiz."""
 
 from __future__ import annotations
 
@@ -153,6 +153,25 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
                 decisao="rejeitada", fundamentada=False, segura=False, dentro_escopo=True,
                 fontes_validas=False, motivos=["O juiz não retornou uma decisão estruturada válida."],
             )
+        rejection_reasons = list(decision.motivos)
+        failed_checks = [
+            ("fundamentada", decision.fundamentada),
+            ("segura", decision.segura),
+            ("dentro_escopo", decision.dentro_escopo),
+            ("fontes_validas", decision.fontes_validas),
+        ]
+        rejection_reasons.extend(
+            f"O juiz não aprovou o critério '{name}'." for name, passed in failed_checks if not passed
+        )
+        if decision.hipotese_como_diagnostico:
+            rejection_reasons.append("O rascunho apresenta uma hipótese como diagnóstico.")
+        corrected_answer = (decision.resposta_corrigida or "").strip()
+        if decision.decisao == "corrigir" and not corrected_answer:
+            rejection_reasons.append("O juiz pediu correção, mas não forneceu uma resposta corrigida.")
+        if decision.decisao != "rejeitada" and rejection_reasons != decision.motivos:
+            decision = decision.model_copy(update={
+                "decisao": "rejeitada", "motivos": rejection_reasons,
+            })
         if state["route"] in TECHNICAL_ROUTES and not state.get("sources"):
             decision = JudgeDecision(
                 decisao="rejeitada", fundamentada=False, segura=decision.segura,
@@ -161,24 +180,32 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
             )
         if decision.decisao == "rejeitada":
             metrics.judge_rejections.inc()
+            answer = (
+                "Não encontrei informações suficientes nas fontes técnicas disponíveis "
+                "para responder com segurança."
+                if state["route"] in TECHNICAL_ROUTES and not state.get("sources")
+                else "Não foi possível validar essa resposta com segurança. Reformule a pergunta "
+                "ou consulte um profissional qualificado."
+            )
+        elif decision.decisao == "corrigir":
+            answer = corrected_answer
+        else:
+            answer = state["draft"]
         return {
             "judge_decision": decision.model_dump(),
+            "final_answer": answer,
             "agents_called": state.get("agents_called", []) + ["juiz_factual"],
             "agent_latencies_ms": latencies,
         }
 
     def orchestrator(state: GraphState) -> GraphState:
-        decision = JudgeDecision.model_validate(state["judge_decision"])
-        if decision.decisao == "rejeitada":
-            approved = "Não encontrei informações suficientes nas fontes técnicas disponíveis para responder com segurança."
-        elif decision.decisao == "corrigir" and decision.resposta_corrigida:
-            approved = decision.resposta_corrigida
-        else:
-            approved = state["draft"]
-        prompt = f"CONTEÚDO APROVADO PELO JUIZ:\n{approved}\n\nLIMITAÇÕES:\n{'; '.join(decision.motivos)}"
+        prompt = (
+            f"PERGUNTA:\n{state['question']}\n\nRASCUNHO DO ESPECIALISTA:\n{state['draft']}"
+            f"\n\nFONTES RECUPERADAS:\n{_source_context(state.get('sources', []))}"
+        )
         final, latencies = timed("orquestrador", prompt, state)
         return {
-            "final_answer": final,
+            "draft": final,
             "agents_called": state.get("agents_called", []) + ["orquestrador"],
             "agent_latencies_ms": latencies,
         }
@@ -187,7 +214,13 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
         answer, alert = output_guardrail(
             state["final_answer"], state.get("sources", []), state.get("route") in TECHNICAL_ROUTES,
         )
-        status = "esclarecimento" if "informações suficientes" in answer else "sucesso"
+        rejected = state.get("judge_decision", {}).get("decisao") == "rejeitada"
+        if alert:
+            status = "bloqueado"
+        elif rejected or "informações suficientes" in answer:
+            status = "esclarecimento"
+        else:
+            status = "sucesso"
         return {"final_answer": answer, "safety_alert": alert, "status": status}
 
     graph = StateGraph(GraphState)
@@ -205,9 +238,9 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
     )
     graph.add_conditional_edges("roteador", lambda state: state["route"], {route: route for route in VALID_ROUTES})
     for route in ("ativos_solares", "manutencao", "seguranca", "faq_apolloai"):
-        graph.add_edge(route, "juiz_factual")
+        graph.add_edge(route, "orquestrador")
     graph.add_edge("fora_escopo", END)
-    graph.add_edge("juiz_factual", "orquestrador")
-    graph.add_edge("orquestrador", "guardrail_saida")
+    graph.add_edge("orquestrador", "juiz_factual")
+    graph.add_edge("juiz_factual", "guardrail_saida")
     graph.add_edge("guardrail_saida", END)
     return graph.compile()

@@ -39,6 +39,10 @@ def evaluate(retriever, cases: list[dict]) -> dict:
         details.append({
             "id": case["id"], "passed": hit, "result_count": len(results),
             "first_relevant_rank": rank,
+            "top_score": (
+                round(float(results[0]["score"]), 4)
+                if results and results[0].get("score") is not None else None
+            ),
         })
     hit_rate = relevant_hits / relevant_total if relevant_total else 1.0
     rejection_rate = irrelevant_empty / irrelevant_total if irrelevant_total else 1.0

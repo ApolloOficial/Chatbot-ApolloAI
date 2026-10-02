@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import math
 import re
-import unicodedata
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -37,38 +34,6 @@ SOURCE_URLS = {
     "IEA_PVPS_Task12_Methodological_Guidelines_NEA_2021_report.pdf": TASK_12_URL,
     "IEA_Task12_LCA_Guidelines.pdf": TASK_12_URL,
 }
-
-_QUERY_TRANSLATIONS = {
-    "agrivoltaico": ("agrivoltaic", "agrivoltaics"),
-    "agrivoltaicos": ("agrivoltaic", "agrivoltaics"),
-    "avaliar": ("assess", "assessment", "evaluation"),
-    "bateria": ("battery", "bess"),
-    "baterias": ("batteries", "bess"),
-    "clima": ("climate",),
-    "confiabilidade": ("reliability",),
-    "degradacao": ("degradation",),
-    "desempenho": ("performance",),
-    "economico": ("economic",),
-    "economicos": ("economic",),
-    "falha": ("failure", "failures"),
-    "falhas": ("failure", "failures"),
-    "flutuante": ("floating",),
-    "fotovoltaico": ("photovoltaic", "pv"),
-    "fotovoltaicos": ("photovoltaic", "pv"),
-    "indicadores": ("indicators", "kpi", "kpis"),
-    "manutencao": ("maintenance",),
-    "modo": ("mode", "modes"),
-    "modos": ("mode", "modes"),
-    "modulo": ("module", "modules"),
-    "modulos": ("module", "modules"),
-    "otimizacao": ("optimisation", "optimization"),
-    "reuso": ("reuse", "second_life"),
-    "seguranca": ("safety",),
-    "sombreamento": ("shading", "shaded"),
-    "tecnico": ("technical",),
-    "tecnicos": ("technical",),
-}
-
 
 class SolarKnowledgeBase:
     """Recuperação dos documentos indexados no Qdrant remoto."""
@@ -141,20 +106,24 @@ class SolarKnowledgeBase:
                 result.append(chunk)
         return result
 
-    def retrieve(self, query: str, route: str = "ativos_solares") -> list[dict[str, Any]]:
+    def retrieve(
+        self, query: str, route: str = "ativos_solares", query_vector: list[float] | None = None,
+    ) -> list[dict[str, Any]]:
         del route
         if not self.semantic_store or not self.semantic_store.configured:
             from app.qdrant_store import QdrantUnavailable
 
             raise QdrantUnavailable("Qdrant remoto não configurado.")
-        return self.semantic_store.search_document_chunks(query, self.top_k)
+        if query_vector is None:
+            return self.semantic_store.search_document_chunks(query, self.top_k)
+        return self.semantic_store.search_document_chunks(query, self.top_k, query_vector=query_vector)
 
 
 def _clean(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _split(text: str, size: int = 1200, overlap: int = 200) -> Iterable[str]:
+def _split(text: str, size: int = 350, overlap: int = 70) -> Iterable[str]:
     if not text:
         return
     start = 0
@@ -168,38 +137,6 @@ def _split(text: str, size: int = 1200, overlap: int = 200) -> Iterable[str]:
         if end >= len(text):
             break
         start = max(start + 1, end - overlap)
-
-
-def _tokens(text: str) -> list[str]:
-    stopwords = {"a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em", "para", "por", "com", "um", "uma", "que", "ou", "no", "na"}
-    decomposed = unicodedata.normalize("NFKD", text.casefold())
-    normalized = "".join(char for char in decomposed if not unicodedata.combining(char))
-    words = [word for word in re.findall(r"[a-z0-9]{2,}", normalized) if word not in stopwords]
-    return words + [f"{a}_{b}" for a, b in zip(words, words[1:])]
-
-
-def _query_tokens(text: str) -> list[str]:
-    tokens = _tokens(text)
-    expanded = list(tokens)
-    for token in tokens:
-        expanded.extend(_QUERY_TRANSLATIONS.get(token, ()))
-    return expanded
-
-
-def _embed(text: str, dimensions: int) -> list[list[int | float]]:
-    return _embed_tokens(_tokens(text), dimensions)
-
-
-def _embed_tokens(tokens: list[str], dimensions: int) -> list[list[int | float]]:
-    vector: dict[int, float] = {}
-    for token in tokens:
-        digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
-        value = int.from_bytes(digest, "big")
-        index = value % dimensions
-        vector[index] = vector.get(index, 0.0) + (1.0 if value & 1 else -1.0)
-    vector = {index: value for index, value in vector.items() if value}
-    norm = math.sqrt(sum(item * item for item in vector.values())) or 1.0
-    return [[index, round(value / norm, 7)] for index, value in sorted(vector.items())]
 
 
 def _section(text: str) -> str | None:
