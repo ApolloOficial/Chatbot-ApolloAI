@@ -54,7 +54,7 @@ Confirme antes do deploy:
 
 - MongoDB remoto com URI `mongodb+srv://`;
 - Redis remoto com URI `rediss://`;
-- Qdrant Cloud com `rag_chunks` e `memoria_resumos` indexadas;
+- Qdrant Cloud com `rag_chunks_v2` e `memoria_resumos_v2` indexadas;
 - conta Groq sem forma de pagamento e modelo `openai/gpt-oss-20b` habilitado;
 - IPv4 público estável ou domínio controlado pela equipe;
 - imagem pública no GHCR com tag `sha-<commit completo>`.

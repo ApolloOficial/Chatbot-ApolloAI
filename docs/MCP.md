@@ -6,7 +6,7 @@ O módulo `app.mcp_server` é um servidor MCP real por transporte `stdio`. Ele p
 - `buscar_procedimento_manutencao`;
 - `buscar_orientacao_seguranca`.
 
-O cliente `SolarMCPClient` cria uma sessão MCP, inicializa o protocolo, chama a ferramenta e interpreta o resultado estruturado. O comando e o timeout são configurados por `MCP_SERVER_COMMAND` e `MCP_TIMEOUT_SECONDS`. A indisponibilidade gera `MCPUnavailable`, é contabilizada nas métricas e resulta em resposta controlada; uma função Python local não é apresentada como integração MCP.
+O cliente `SolarMCPClient` cria uma sessão MCP, inicializa o protocolo, chama a ferramenta e interpreta o resultado estruturado. O ApolloAI calcula o embedding da consulta no processo Flask e envia o vetor junto com a pergunta; chamadas MCP diretas podem omitir o vetor e o servidor o calcula localmente. Assim, o fluxo HTTP não carrega o modelo no subprocesso MCP a cada busca. O comando e o timeout são configurados por `MCP_SERVER_COMMAND` e `MCP_TIMEOUT_SECONDS`. A indisponibilidade gera `MCPUnavailable`, é contabilizada nas métricas e resulta em resposta controlada; uma função Python local não é apresentada como integração MCP.
 
 Para inspecionar as ferramentas com o Inspector oficial:
 

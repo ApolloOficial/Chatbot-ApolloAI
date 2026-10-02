@@ -62,5 +62,54 @@ def test_hypothesis_is_not_presented_as_diagnosis(client, payload):
 
 def test_chat_executes_full_graph(client, payload):
     response = client.post("/chat", json=payload)
-    assert response.json["agentes_chamados"] == ["roteador", "ativos_solares", "juiz_factual", "orquestrador"]
+    assert response.json["agentes_chamados"] == ["roteador", "ativos_solares", "orquestrador", "juiz_factual"]
     assert response.json["fontes"][0]["documento"].startswith("nrel")
+
+
+@pytest.mark.parametrize("failed_check", [
+    "fundamentada", "segura", "dentro_escopo", "fontes_validas", "hipotese_como_diagnostico",
+])
+def test_judge_rejects_approval_with_failed_check(client, payload, app_bundle, monkeypatch, failed_check):
+    _, memory, runtime, _ = app_bundle
+    original_invoke = runtime.invoke
+
+    def invoke(agent_name, content):
+        if agent_name == "juiz_factual":
+            decision = {
+                "decisao": "aprovada", "fundamentada": True, "segura": True,
+                "dentro_escopo": True, "fontes_validas": True,
+                "hipotese_como_diagnostico": False, "motivos": [], "resposta_corrigida": None,
+            }
+            decision[failed_check] = False if failed_check != "hipotese_como_diagnostico" else True
+            return json.dumps(decision)
+        return original_invoke(agent_name, content)
+
+    monkeypatch.setattr(runtime, "invoke", invoke)
+    response = client.post("/chat", json=payload)
+
+    assert response.json["status"] == "esclarecimento"
+    assert "Não foi possível validar" in response.json["resposta"]
+    saved = memory.messages.find_one({"role": "assistente"})
+    assert saved["judge_decision"]["decisao"] == "rejeitada"
+
+
+def test_judge_rejects_correction_without_revised_answer(client, payload, app_bundle, monkeypatch):
+    _, memory, runtime, _ = app_bundle
+    original_invoke = runtime.invoke
+
+    def invoke(agent_name, content):
+        if agent_name == "juiz_factual":
+            return json.dumps({
+                "decisao": "corrigir", "fundamentada": True, "segura": True,
+                "dentro_escopo": True, "fontes_validas": True,
+                "hipotese_como_diagnostico": False, "motivos": [], "resposta_corrigida": "  ",
+            })
+        return original_invoke(agent_name, content)
+
+    monkeypatch.setattr(runtime, "invoke", invoke)
+    response = client.post("/chat", json=payload)
+
+    assert response.json["status"] == "esclarecimento"
+    saved = memory.messages.find_one({"role": "assistente"})
+    assert saved["judge_decision"]["decisao"] == "rejeitada"
+    assert "não forneceu uma resposta corrigida" in " ".join(saved["judge_decision"]["motivos"])
