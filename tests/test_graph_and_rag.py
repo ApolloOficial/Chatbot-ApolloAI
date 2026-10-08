@@ -74,7 +74,7 @@ def test_hypothesis_is_not_presented_as_diagnosis(client, payload):
 
 def test_chat_executes_full_graph(client, payload):
     response = client.post("/chat", json=payload)
-    assert response.json["agentes_chamados"] == ["roteador", "ativos_solares", "orquestrador", "juiz_factual"]
+    assert response.json["agentes_chamados"] == ["roteador", "ativos_solares", "juiz_factual"]
     assert response.json["fontes"][0]["documento"].startswith("nrel")
 
 
@@ -124,4 +124,4 @@ def test_judge_rejects_correction_without_revised_answer(client, payload, app_bu
     assert response.json["status"] == "esclarecimento"
     saved = memory.messages.find_one({"role": "assistente"})
     assert saved["judge_decision"]["decisao"] == "rejeitada"
-    assert "não forneceu uma resposta corrigida" in " ".join(saved["judge_decision"]["motivos"])
+    assert "motivos" not in saved["judge_decision"]

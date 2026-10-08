@@ -27,8 +27,11 @@ with open(sys.argv[1], encoding="utf-8") as source:
 missing = [name for name in required if not isinstance(values.get(name), str) or not values[name]]
 if missing:
     raise SystemExit("Chaves ausentes no Secrets Manager: " + ", ".join(missing))
+neo4j = ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD")
+if any(values.get(name) for name in neo4j) and not all(values.get(name) for name in neo4j):
+    raise SystemExit("Configure as três chaves NEO4J_* ou nenhuma delas")
 with open(sys.argv[2], "w", encoding="utf-8", newline="\n") as destination:
-    for name in (*required, "LANGSMITH_API_KEY"):
+    for name in (*required, "LANGSMITH_API_KEY", *neo4j):
         if name not in required and not values.get(name):
             continue
         value = values[name]

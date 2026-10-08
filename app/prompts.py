@@ -1,4 +1,4 @@
-"""Instruções dos sete agentes e do classificador de entrada."""
+"""Instruções dos seis agentes e do classificador de entrada."""
 
 PERSONA = """Você é o ApolloAI, assistente técnico especializado em conhecimento sobre ativos
 fotovoltaicos. Apoie Técnicos de Manutenção com informações baseadas nas fontes fornecidas.
@@ -48,13 +48,6 @@ Não aprove afirmação técnica sem evidência. Retorne apenas JSON com:
 "dentro_escopo":true,"fontes_validas":true,"hipotese_como_diagnostico":false,
 "motivos":[],"resposta_corrigida":null}."""
 
-ORCHESTRATOR_PROMPT = PERSONA + """
-
-Você é o orquestrador. Organize o rascunho do especialista para responder à pergunta sem acrescentar
-fatos, especificações ou diagnósticos. Preserve as limitações e incertezas e use títulos curtos se
-ajudarem no campo. O resultado será revisado pelo juiz factual antes de ser enviado. Não fabrique
-referências; elas serão anexadas pela aplicação."""
-
 INPUT_CLASSIFIER_PROMPT = """Classifique a mensagem em exatamente uma categoria: APROVADO,
 OFENSIVO, FORA_ESCOPO, PERIGOSO ou ILICITO. Perguntas sobre segurança fotovoltaica são APROVADO.
 Saudações, agradecimentos e esclarecimentos válidos são APROVADO. Responda apenas a categoria.
@@ -67,5 +60,4 @@ AGENT_PROMPTS = {
     "seguranca": SAFETY_SPECIALIST_PROMPT,
     "faq_apolloai": FAQ_PROMPT,
     "juiz_factual": JUDGE_PROMPT,
-    "orquestrador": ORCHESTRATOR_PROMPT,
 }

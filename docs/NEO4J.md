@@ -19,6 +19,8 @@ A pequena massa inicial em `app/services/neo4j_service.py` usa a [síntese NREL]
 2. Execute `python -m scripts.seed_neo4j`.
 3. Faça `GET /knowledge/impact?componente=Cabo` com o mesmo Bearer e `X-User-ID` usados em `/chat`.
 
+No K3s, salve as três chaves no AWS Secrets Manager e sincronize o Secret antes de reiniciar o Pod. Para testar o percurso contra uma instância real, configure `NEO4J_TEST_URI`, `NEO4J_TEST_USER` e `NEO4J_TEST_PASSWORD` em um banco de teste e execute `python -m pytest tests/test_neo4j_graph.py -m integration -q`.
+
 Pergunta de negócio: **“Quais modos de falha podem afetar o cabo do sistema e quais ações de avaliação estão relacionadas?”** A consulta percorre três relações, de `Sistema` até `AcaoAvaliacao`. Ela retorna `sistema`, `componente`, `modo_falha`, `acao_avaliacao` e `fonte`; portanto não é uma busca por um único nó. `Módulo` e `Inversor` também têm caminhos de exemplo. A rota retorna `503` se o Neo4j não estiver configurado ou acessível.
 
 Neo4j é um extra independente: o chatbot continua funcional sem ele. A consulta é somente leitura; a carga é feita pelo comando explícito, não a cada pergunta.

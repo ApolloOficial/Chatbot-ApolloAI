@@ -26,7 +26,7 @@ O chatbot oferece orientação: não aciona equipamentos, registra manutenções
 - **Operação:** métricas Prometheus e implantação em K3s.
 
 ```text
-Requisição → guardrail de entrada → roteador → especialista → orquestrador
+Requisição → guardrail de entrada → roteador → especialista
            → juiz factual → guardrail de saída → resposta com fontes
 ```
 

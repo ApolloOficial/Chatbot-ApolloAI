@@ -83,8 +83,7 @@ def test_agent_handoffs_are_measured(app_bundle, payload):
     metrics = app.extensions["metrics"]
     for origin, destination in (
         ("roteador", "ativos_solares"),
-        ("ativos_solares", "orquestrador"),
-        ("orquestrador", "juiz_factual"),
+        ("ativos_solares", "juiz_factual"),
     ):
         assert sample(metrics, "apolloai_agent_handoff_seconds_count", {"origem": origin, "destino": destination}) == 1
 

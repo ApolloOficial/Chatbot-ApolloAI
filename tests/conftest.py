@@ -98,9 +98,6 @@ class FakeRuntime:
                 "motivos": ["Conteúdo sem evidência ou inseguro."] if rejected else [],
                 "resposta_corrigida": None,
             })
-        if name == "orquestrador":
-            marker = "RASCUNHO DO ESPECIALISTA:\n"
-            return content.split(marker, 1)[-1].split("\n\nFONTES RECUPERADAS:", 1)[0]
         if name == "faq_apolloai":
             return "Olá! Sou o ApolloAI e posso orientar sobre ativos fotovoltaicos, manutenção e segurança."
         if "orientacao perigosa" in text:

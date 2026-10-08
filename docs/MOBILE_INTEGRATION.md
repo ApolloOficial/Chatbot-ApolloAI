@@ -75,6 +75,6 @@ encerrada. O cliente inicia outra conversa com um novo `session_id`.
 MCP. `/metrics` fornece os indicadores ao Prometheus. A configuração do painel
 está em [PROMETHEUS_PRODUCTION.md](PROMETHEUS_PRODUCTION.md).
 
-O diretório `frontend` contém uma interface HTML/JS de teste. Ela não envia
-o token de serviço e, por isso, não se autentica diretamente na API configurada
-para produção. A integração do produto passa pelo backend Apollo.
+O diretório `frontend` contém uma interface HTML/JS disponível apenas com
+`TESTING=true`. Ela não envia o token de serviço. A integração do produto
+passa pelo backend Apollo.

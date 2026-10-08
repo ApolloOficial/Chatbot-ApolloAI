@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 from flask import Flask
 
 from app.graph import build_graph
 from app.llms import LangChainAgentRuntime, ProviderUnavailable
-from app.memory import MemoryUnavailable
+from app.memory import MemoryUnavailable, SessionClosed
 from app.qdrant_store import QdrantUnavailable
 from app.schemas import ChatRequest, ChatResponse, SourceReference
 from app.services.mcp_client import MCPRetriever, MCPUnavailable, SolarMCPClient
@@ -17,6 +18,9 @@ from app.services.redis_service import RedisUnavailable
 
 class SessionAccessDenied(RuntimeError):
     """Impede que um usuário reutilize a sessão de outro."""
+
+
+logger = logging.getLogger(__name__)
 
 
 class ChatService:
@@ -53,6 +57,9 @@ class ChatService:
                 self.metrics.resolutions.inc()
             return response
         except SessionAccessDenied:
+            status = "negado"
+            raise
+        except SessionClosed:
             status = "negado"
             raise
         except Exception:
@@ -97,19 +104,27 @@ class ChatService:
             metadata = {
                 "route": response.rota, "agents_called": response.agentes_chamados,
                 "sources": [source.model_dump(mode="json") for source in response.fontes],
-                "judge_decision": state.get("judge_decision", {}), "blocked": response.status == "bloqueado",
+                "judge_decision": {key: value for key, value in state.get("judge_decision", {}).items()
+                                   if key in {"decisao", "fundamentada", "segura", "dentro_escopo",
+                                              "fontes_validas", "hipotese_como_diagnostico"}},
+                "blocked": response.status == "bloqueado",
                 "block_reason": response.motivo_bloqueio, "total_latency_ms": latency_ms,
             }
             self.redis.record_route(response.rota)
             self.memory.save_message(request.user_id, request.session_id, "usuario", request.pergunta)
             self.memory.save_message(request.user_id, request.session_id, "assistente", response.resposta, **metadata)
-            self.memory.update_session_result(request.user_id, request.session_id, response.rota)
-            self.memory.maybe_summarize(request.user_id, request.session_id)
-            self.memory.save_observation({
-                **{key: value for key, value in metadata.items() if key != "sources"},
-                "agent_latencies_ms": state.get("agent_latencies_ms", {}),
-                "source_count": len(response.fontes),
-            })
+            try:
+                self.memory.maybe_summarize(request.user_id, request.session_id)
+            except (MemoryUnavailable, QdrantUnavailable) as error:
+                logger.warning("resumo_nao_atualizado", extra={"error_type": type(error).__name__})
+            try:
+                self.memory.save_observation({
+                    **{key: value for key, value in metadata.items() if key != "sources"},
+                    "agent_latencies_ms": state.get("agent_latencies_ms", {}),
+                    "source_count": len(response.fontes),
+                })
+            except MemoryUnavailable as error:
+                logger.warning("observacao_nao_persistida", extra={"error_type": type(error).__name__})
             return response
         except MCPUnavailable:
             self.metrics.mcp_failures.inc()

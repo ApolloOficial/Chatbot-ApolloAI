@@ -37,7 +37,8 @@ def create_app(config: type[Config] | dict | None = None) -> Flask:
     init_extensions(app)
     register_blueprints(app)
     _register_error_handlers(app)
-    _register_test_frontend(app)
+    if app.config["TESTING"]:
+        _register_test_frontend(app)
     return app
 
 

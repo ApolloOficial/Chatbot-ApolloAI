@@ -84,7 +84,7 @@ class Config:
     AVG_MESSAGES_PER_USER = float(os.getenv("AVG_MESSAGES_PER_USER", "5"))
     AVG_INPUT_TOKENS = float(os.getenv("AVG_INPUT_TOKENS", "700"))
     AVG_OUTPUT_TOKENS = float(os.getenv("AVG_OUTPUT_TOKENS", "350"))
-    AVG_AGENTS_PER_REQUEST = float(os.getenv("AVG_AGENTS_PER_REQUEST", "5"))
+    AVG_AGENTS_PER_REQUEST = float(os.getenv("AVG_AGENTS_PER_REQUEST", "4"))
     AVG_RAG_QUERIES = float(os.getenv("AVG_RAG_QUERIES", "1"))
     ESTIMATED_RESOLUTION_RATE = float(os.getenv("ESTIMATED_RESOLUTION_RATE", "0.75"))
     ESTIMATED_MINUTES_SAVED = float(os.getenv("ESTIMATED_MINUTES_SAVED", "5"))

@@ -1,5 +1,9 @@
 """O extra de BD2 exige percurso de relações, não busca isolada por nó."""
 
+import os
+
+import pytest
+
 from app.services.neo4j_service import PATHS, SEED_QUERY, TRAVERSAL_QUERY, SolarGraph
 
 
@@ -66,3 +70,18 @@ def test_graph_endpoint_auth_and_unavailable(client, app_bundle):
     response = client.get("/knowledge/impact?componente=Cabo")
     assert response.status_code == 200
     assert response.json["total"] == 1
+
+
+@pytest.mark.integration
+def test_business_traversal_against_neo4j():
+    settings = [os.getenv(name) for name in ("NEO4J_TEST_URI", "NEO4J_TEST_USER", "NEO4J_TEST_PASSWORD")]
+    if not all(settings):
+        pytest.skip("Configure NEO4J_TEST_URI, NEO4J_TEST_USER e NEO4J_TEST_PASSWORD")
+    graph = SolarGraph(*settings)
+    try:
+        assert graph.seed() == len(PATHS)
+        paths = graph.paths_for_component("Cabo")
+        assert {item["modo_falha"] for item in paths} >= {"Dano por animais", "Esmagamento"}
+        assert all(item["sistema"] == "Sistema fotovoltaico" and item["acao_avaliacao"] for item in paths)
+    finally:
+        graph.close()

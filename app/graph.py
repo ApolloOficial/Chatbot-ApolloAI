@@ -213,19 +213,6 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
             "last_agent_end_at": finished_at, "last_agent_name": "juiz_factual",
         }
 
-    def orchestrator(state: GraphState) -> GraphState:
-        prompt = (
-            f"PERGUNTA:\n{state['question']}\n\nRASCUNHO DO ESPECIALISTA:\n{state['draft']}"
-            f"\n\nFONTES RECUPERADAS:\n{_source_context(state.get('sources', []))}"
-        )
-        final, latencies, finished_at = timed("orquestrador", prompt, state)
-        return {
-            "draft": final,
-            "agents_called": state.get("agents_called", []) + ["orquestrador"],
-            "agent_latencies_ms": latencies,
-            "last_agent_end_at": finished_at, "last_agent_name": "orquestrador",
-        }
-
     def guard_output(state: GraphState) -> GraphState:
         answer, alert = output_guardrail(
             state["final_answer"], state.get("sources", []), state.get("route") in TECHNICAL_ROUTES,
@@ -246,7 +233,6 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
         graph.add_node(route, specialist(route))
     graph.add_node("fora_escopo", out_of_scope)
     graph.add_node("juiz_factual", judge)
-    graph.add_node("orquestrador", orchestrator)
     graph.add_node("guardrail_saida", guard_output)
     graph.set_entry_point("guardrail_entrada")
     graph.add_conditional_edges(
@@ -254,9 +240,8 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
     )
     graph.add_conditional_edges("roteador", lambda state: state["route"], {route: route for route in VALID_ROUTES})
     for route in ("ativos_solares", "manutencao", "seguranca", "faq_apolloai"):
-        graph.add_edge(route, "orquestrador")
+        graph.add_edge(route, "juiz_factual")
     graph.add_edge("fora_escopo", END)
-    graph.add_edge("orquestrador", "juiz_factual")
     graph.add_edge("juiz_factual", "guardrail_saida")
     graph.add_edge("guardrail_saida", END)
     return graph.compile()

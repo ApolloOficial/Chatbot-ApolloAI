@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import mongomock
 
-from app.memory import MongoMemoryRepository
+from app import create_app
+from app.memory import MemoryUnavailable, MongoMemoryRepository
 
 
 class FakeSemanticStore:
@@ -60,6 +61,59 @@ def test_observability_has_no_user_or_session(client, payload, app_bundle):
     record = app_bundle[1].observability.find_one()
     assert "user_id" not in record and "session_id" not in record
     assert "question" not in record and "answer" not in record
+
+
+def test_observability_discards_judge_text(app_bundle):
+    memory = app_bundle[1]
+    memory.save_observation({"judge_decision": {
+        "decisao": "corrigir", "resposta_corrigida": "contato@example.com",
+        "motivos": ["CPF 123.456.789-00"],
+    }})
+    record = memory.observability.find_one()
+    assert record["judge_decision"] == {"decisao": "corrigir"}
+    assert "contato@example.com" not in str(record)
+
+
+def test_closed_session_rejects_new_turn(client, payload, app_bundle):
+    assert client.post("/chat", json=payload).status_code == 200
+    assert client.post(f"/sessions/{payload['session_id']}/close", json={"user_id": payload["user_id"]}).status_code == 200
+    response = client.post("/chat", json=payload)
+    assert response.status_code == 409
+    assert app_bundle[1].messages.count_documents({"session_id": payload["session_id"]}) == 2
+
+
+def test_messages_are_not_copied_into_sessions(client, payload, app_bundle):
+    client.post("/chat", json=payload)
+    session = app_bundle[1].sessions.find_one({"session_id": payload["session_id"]})
+    assert "messages" not in session
+    assert session["message_count"] == 2
+
+
+def test_late_enrichment_failure_does_not_duplicate_turn(client, payload, app_bundle, monkeypatch):
+    memory = app_bundle[1]
+    assert client.post("/chat", json=payload).status_code == 200
+
+    def unavailable(*_args):
+        raise RuntimeError("offline")
+
+    monkeypatch.setattr(memory.semantic_store, "upsert_summary", unavailable)
+    monkeypatch.setattr(memory, "save_observation", lambda *_: (_ for _ in ()).throw(MemoryUnavailable()))
+    response = client.post("/chat", json={**payload, "pergunta": "Obrigado ApolloAI"})
+    assert response.status_code == 200
+    assert memory.messages.count_documents({"session_id": payload["session_id"]}) == 4
+
+
+def test_test_frontend_is_not_served_in_production():
+    app = create_app({
+        "PUBLIC_BASE_URL": "https://apollo.example.com",
+        "QDRANT_URL": "https://qdrant.example.com",
+        "MONGODB_URI": "mongodb+srv://mongo.example.com",
+        "REDIS_URL": "rediss://redis.example.com",
+        "CORS_ORIGINS": ["https://apollo.example.com"],
+        "QDRANT_API_KEY": "test", "APOLLOAI_API_TOKEN": "test",
+        "AI_MODEL": "test-model", "AI_PROVIDER": "groq", "GROQ_API_KEY": "test",
+    })
+    assert app.test_client().get("/").status_code == 404
 
 
 def test_closing_session_forces_long_term_summary(client, payload, app_bundle):
