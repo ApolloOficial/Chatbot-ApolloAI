@@ -1,4 +1,4 @@
-"""Grafo multiagente: guardrail → roteador → especialista → orquestrador → juiz."""
+"""Grafo de triagem, especialização e revisão factual com guardrails de entrada e saída."""
 
 from __future__ import annotations
 
@@ -43,6 +43,8 @@ class GraphState(TypedDict, total=False):
     safety_alert: str | None
     agent_latencies_ms: dict[str, float]
     social_interaction: bool
+    last_agent_end_at: float
+    last_agent_name: str
 
 
 def _json_object(text: str) -> dict[str, Any]:
@@ -68,20 +70,30 @@ def _source_context(sources: list[dict[str, Any]]) -> str:
 
 
 def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
-    """Compila um StateGraph; o histórico durável permanece exclusivamente no MongoDB."""
+    """Compila o fluxo de resposta com os serviços de agentes, recuperação e métricas."""
 
-    def timed(agent_name: str, content: str, state: GraphState) -> tuple[str, dict[str, float]]:
+    def timed(agent_name: str, content: str, state: GraphState) -> tuple[str, dict[str, float], float]:
         started = time.perf_counter()
-        answer = runtime.invoke(agent_name, content)
-        latency = (time.perf_counter() - started) * 1000
+        if state.get("last_agent_end_at") is not None:
+            metrics.agent_handoff_latency.labels(state["last_agent_name"], agent_name).observe(
+                max(0, started - state["last_agent_end_at"])
+            )
         metrics.agents.labels(agent_name).inc()
-        metrics.agent_latency.labels(agent_name).observe(latency / 1000)
+        try:
+            answer = runtime.invoke(agent_name, content)
+        finally:
+            latency = (time.perf_counter() - started) * 1000
+            metrics.agent_latency.labels(agent_name).observe(latency / 1000)
         latencies = dict(state.get("agent_latencies_ms", {}))
         latencies[agent_name] = round(latency, 2)
-        return answer, latencies
+        return answer, latencies, time.perf_counter()
 
     def guard_input(state: GraphState) -> GraphState:
-        result = input_guardrail(state["question"], runtime.classify_input)
+        # Contexto também vem do cliente e pode conter instruções adversariais.
+        screened = state["question"]
+        if state.get("context"):
+            screened += "\n" + json.dumps(state["context"], ensure_ascii=False)
+        result = input_guardrail(screened, runtime.classify_input)
         if not result.blocked:
             approved = {"blocked": False, "agents_called": [], "agent_latencies_ms": {}}
             if result.response:
@@ -111,12 +123,13 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
 
     def router(state: GraphState) -> GraphState:
         content = f"MENSAGEM ORIGINAL:\n{state['question']}\n\nCONTEXTO FORNECIDO:\n{json.dumps(state.get('context', {}), ensure_ascii=False)}"
-        answer, latencies = timed("roteador", content, state)
+        answer, latencies, finished_at = timed("roteador", content, state)
         route = _json_object(answer).get("rota")
         if route not in VALID_ROUTES:
             raise ProviderUnavailable("O roteador não retornou uma rota válida.")
         metrics.routes.labels(route).inc()
-        return {"route": route, "agents_called": ["roteador"], "agent_latencies_ms": latencies}
+        return {"route": route, "agents_called": ["roteador"], "agent_latencies_ms": latencies,
+                "last_agent_end_at": finished_at, "last_agent_name": "roteador"}
 
     def specialist(agent_name: str):
         def node(state: GraphState) -> GraphState:
@@ -127,11 +140,12 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
                 f"{json.dumps(state.get('context', {}), ensure_ascii=False)}\n\nMEMÓRIAS RELEVANTES:\n"
                 f"{json.dumps(state.get('memories', []), ensure_ascii=False)}\n\nTRECHOS RECUPERADOS:\n{_source_context(sources)}"
             )
-            draft, latencies = timed(agent_name, prompt, state)
+            draft, latencies, finished_at = timed(agent_name, prompt, state)
             return {
                 "draft": draft, "sources": sources,
                 "agents_called": state.get("agents_called", []) + [agent_name],
                 "agent_latencies_ms": latencies,
+                "last_agent_end_at": finished_at, "last_agent_name": agent_name,
             }
         return node
 
@@ -144,7 +158,7 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
 
     def judge(state: GraphState) -> GraphState:
         prompt = f"RASCUNHO:\n{state['draft']}\n\nFONTES RECUPERADAS:\n{_source_context(state.get('sources', []))}\n\nROTA: {state['route']}"
-        raw, latencies = timed("juiz_factual", prompt, state)
+        raw, latencies, finished_at = timed("juiz_factual", prompt, state)
         payload = _json_object(raw)
         try:
             decision = JudgeDecision.model_validate(payload)
@@ -196,6 +210,7 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
             "final_answer": answer,
             "agents_called": state.get("agents_called", []) + ["juiz_factual"],
             "agent_latencies_ms": latencies,
+            "last_agent_end_at": finished_at, "last_agent_name": "juiz_factual",
         }
 
     def orchestrator(state: GraphState) -> GraphState:
@@ -203,11 +218,12 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
             f"PERGUNTA:\n{state['question']}\n\nRASCUNHO DO ESPECIALISTA:\n{state['draft']}"
             f"\n\nFONTES RECUPERADAS:\n{_source_context(state.get('sources', []))}"
         )
-        final, latencies = timed("orquestrador", prompt, state)
+        final, latencies, finished_at = timed("orquestrador", prompt, state)
         return {
             "draft": final,
             "agents_called": state.get("agents_called", []) + ["orquestrador"],
             "agent_latencies_ms": latencies,
+            "last_agent_end_at": finished_at, "last_agent_name": "orquestrador",
         }
 
     def guard_output(state: GraphState) -> GraphState:

@@ -1,0 +1,29 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    ports: ["127.0.0.1:9090:9090"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=1GB
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus-data:/prometheus
+  grafana:
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Configure GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./deploy/monitoring/grafana-datasource.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./deploy/monitoring/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/apolloai.yml:ro
+      - ./deploy/monitoring/apolloai-dashboard.json:/var/lib/grafana/dashboards/apolloai.json:ro
+volumes:
+  prometheus-data:
+  grafana-data:

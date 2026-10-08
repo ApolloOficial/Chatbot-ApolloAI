@@ -3,6 +3,7 @@ flask-cors>=5,<7
 pydantic>=2.10,<3
 python-dotenv>=1.0,<2
 pymongo>=4.10,<5
+neo4j>=5.28,<7
 redis>=5,<7
 langchain>=0.3,<2
 langchain-core>=0.3,<2
@@ -16,6 +17,5 @@ fastembed>=0.7,<1
 prometheus-client>=0.21,<1
 gunicorn>=23,<24
 
-# desenvolvimento e testes
 pytest>=8,<10
 mongomock>=4.3,<5

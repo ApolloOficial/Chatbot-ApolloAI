@@ -1,4 +1,4 @@
-"""Dependências compartilhadas inicializadas pela application factory."""
+"""Registro de métricas e criação sob demanda dos serviços da aplicação Flask."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from flask import Flask
 
 
 def init_extensions(app: Flask) -> None:
-    """Registra serviços com inicialização sob demanda para não bloquear o startup."""
+    """Inicializa as métricas e o cache de serviços da aplicação."""
     from app.services.metrics import MetricsRegistry
 
     app.extensions["metrics"] = MetricsRegistry()
@@ -38,6 +38,10 @@ def get_service(app: Flask, name: str):
         from app.services.mcp_client import SolarMCPClient
 
         service = SolarMCPClient.from_config(app.config)
+    elif name == "knowledge_graph":
+        from app.services.neo4j_service import SolarGraph
+
+        service = SolarGraph.from_config(app.config)
     else:
         raise KeyError(f"Serviço desconhecido: {name}")
     services[name] = service

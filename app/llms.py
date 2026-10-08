@@ -21,8 +21,9 @@ class ProviderUnavailable(RuntimeError):
 class LangChainAgentRuntime:
     """Executa os agentes via `create_agent`, com instâncias em cache local."""
 
-    def __init__(self, config) -> None:
+    def __init__(self, config, metrics=None) -> None:
         self.config = config
+        self.metrics = metrics
         self._model = None
         self._agents: dict[str, Any] = {}
 
@@ -59,7 +60,7 @@ class LangChainAgentRuntime:
                 self._agents[agent_name] = create_agent(
                     model=self.model, system_prompt=AGENT_PROMPTS[agent_name], name=agent_name,
                 )
-            output = self._agents[agent_name].invoke({"messages": [{"role": "user", "content": content}]})
+            output = self._agents[agent_name].invoke({"messages": [{"role": "user", "content": content}]}, config=self._callbacks(agent_name))
             return _content_text(getattr(output["messages"][-1], "content", ""))
         except ProviderUnavailable:
             raise
@@ -69,7 +70,7 @@ class LangChainAgentRuntime:
 
     def classify_input(self, message: str) -> str:
         try:
-            result = self.model.invoke(INPUT_CLASSIFIER_PROMPT.format(message=message))
+            result = self.model.invoke(INPUT_CLASSIFIER_PROMPT.format(message=message), config=self._callbacks("guardrail_entrada"))
             category = _content_text(result.content).strip().upper().split()[0]
             if category not in INPUT_CATEGORIES:
                 raise ValueError("Categoria inválida.")
@@ -77,6 +78,13 @@ class LangChainAgentRuntime:
         except Exception as error:
             logger.warning("classificador_semantico_indisponivel", extra={"error_type": type(error).__name__})
             raise ProviderUnavailable("Classificador de segurança indisponível.") from error
+
+    def _callbacks(self, agent_name):
+        if self.metrics is None:
+            return {}
+        from app.services.model_observability import ModelMetricsCallback
+
+        return {"callbacks": [ModelMetricsCallback(self.metrics, self.config, agent_name)]}
 
 
 def _content_text(content: Any) -> str:

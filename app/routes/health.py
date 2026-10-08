@@ -1,4 +1,4 @@
-"""Endpoint de saúde sem dados sensíveis."""
+"""Endpoints de liveness e disponibilidade de MongoDB, Redis, Qdrant e MCP."""
 
 from flask import Blueprint, current_app, jsonify
 
@@ -9,7 +9,7 @@ health_bp = Blueprint("health", __name__)
 
 @health_bp.get("/live")
 def live():
-    """Liveness não reinicia o processo por falhas em dependências externas."""
+    """Responde sem consultar dependências externas."""
     return jsonify({"status": "ok", "servico": "ApolloAI", "versao": current_app.config["VERSION"]})
 
 

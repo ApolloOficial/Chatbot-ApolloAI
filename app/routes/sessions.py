@@ -1,4 +1,4 @@
-"""Ciclo de vida explícito das sessões conversacionais."""
+"""Encerramento autenticado de sessões com geração do resumo final."""
 
 from flask import Blueprint, current_app, jsonify, request
 from pydantic import ValidationError

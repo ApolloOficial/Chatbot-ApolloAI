@@ -5,7 +5,7 @@ MongoDB é a fonte de verdade das sessões e mensagens; Qdrant armazena os vetor
 - `sessions`: índice único `(user_id, session_id)` e estado resumido/bounded;
 - `messages`: histórico completo, metadados do grafo e TTL de retenção;
 - `summaries`: memória de longo prazo formada por resumos recuperáveis de sessões anteriores;
-- `observability`: rota, agentes, juiz, latências e contagens sem PII.
+- `observability`: rota, agentes, juiz, latências e contagens, sem campos `user_id` e `session_id`.
 
 O contexto curto usa as últimas mensagens configuradas. A memória longa pesquisa no Qdrant remoto apenas resumos do mesmo `user_id`; MongoDB guarda o registro definitivo. Resumos são gerados em intervalos configuráveis; `POST /sessions/{session_id}/close` força o resumo final e encerra a sessão. Falhas do Qdrant não acionam busca lexical local.
 

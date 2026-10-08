@@ -28,9 +28,11 @@ missing = [name for name in required if not isinstance(values.get(name), str) or
 if missing:
     raise SystemExit("Chaves ausentes no Secrets Manager: " + ", ".join(missing))
 with open(sys.argv[2], "w", encoding="utf-8", newline="\n") as destination:
-    for name in required:
+    for name in (*required, "LANGSMITH_API_KEY"):
+        if name not in required and not values.get(name):
+            continue
         value = values[name]
-        if "\n" in value or "\r" in value:
+        if not isinstance(value, str) or "\n" in value or "\r" in value:
             raise SystemExit(f"O valor de {name} não pode conter quebra de linha")
         destination.write(f"{name}={value}\n")
 PY

@@ -1,8 +1,7 @@
-"""Caso de uso que executa o grafo e persiste seu resultado completo."""
+"""Execução do chat com controle de sessão, persistência e métricas."""
 
 from __future__ import annotations
 
-import logging
 import time
 
 from flask import Flask
@@ -15,8 +14,6 @@ from app.schemas import ChatRequest, ChatResponse, SourceReference
 from app.services.mcp_client import MCPRetriever, MCPUnavailable, SolarMCPClient
 from app.services.redis_service import RedisUnavailable
 
-logger = logging.getLogger(__name__)
-
 
 class SessionAccessDenied(RuntimeError):
     """Impede que um usuário reutilize a sessão de outro."""
@@ -28,7 +25,7 @@ class ChatService:
         self.memory = memory
         self.redis = redis_support
         self.metrics = metrics
-        self.runtime = runtime or LangChainAgentRuntime(config)
+        self.runtime = runtime or LangChainAgentRuntime(config, metrics)
         if retriever is None:
             retriever = MCPRetriever(SolarMCPClient.from_config(config))
         self.retriever = retriever
@@ -47,6 +44,26 @@ class ChatService:
     def execute(self, request: ChatRequest) -> ChatResponse:
         started = time.perf_counter()
         self.metrics.record_request()
+        self.metrics.in_progress.inc()
+        status = "erro"
+        try:
+            response = self._execute(request, started)
+            status = response.status
+            if status == "sucesso":
+                self.metrics.resolutions.inc()
+            return response
+        except SessionAccessDenied:
+            status = "negado"
+            raise
+        except Exception:
+            self.metrics.record_error("inesperado")
+            raise
+        finally:
+            self.metrics.outcomes.labels(status).inc()
+            self.metrics.total_latency.observe(time.perf_counter() - started)
+            self.metrics.in_progress.dec()
+
+    def _execute(self, request: ChatRequest, started: float) -> ChatResponse:
         try:
             if not self.memory.verify_ownership(request.user_id, request.session_id):
                 self.metrics.record_error("acesso_sessao_negado")
@@ -89,16 +106,10 @@ class ChatService:
             self.memory.update_session_result(request.user_id, request.session_id, response.rota)
             self.memory.maybe_summarize(request.user_id, request.session_id)
             self.memory.save_observation({
-                "route": response.rota, "agents_called": response.agentes_chamados,
-                "judge_decision": state.get("judge_decision", {}), "blocked": response.status == "bloqueado",
-                "block_reason": response.motivo_bloqueio, "agent_latencies_ms": state.get("agent_latencies_ms", {}),
-                "total_latency_ms": latency_ms, "source_count": len(response.fontes),
+                **{key: value for key, value in metadata.items() if key != "sources"},
+                "agent_latencies_ms": state.get("agent_latencies_ms", {}),
+                "source_count": len(response.fontes),
             })
-            self.metrics.total_latency.observe(latency_ms / 1000)
-            input_tokens = _estimate_tokens(request.pergunta) + sum(_estimate_tokens(str(item)) for item in recent)
-            output_tokens = _estimate_tokens(response.resposta)
-            cost = _estimated_cost(input_tokens, output_tokens, self.config)
-            self.metrics.record_usage(input_tokens, output_tokens, cost, response.status == "sucesso")
             return response
         except MCPUnavailable:
             self.metrics.mcp_failures.inc()
@@ -134,15 +145,3 @@ class ChatService:
             session_id=session_id, resposta=message, status="erro", rota="fora_escopo",
             agentes_chamados=[], fontes=[], motivo_bloqueio=None,
         )
-
-
-def _estimate_tokens(text: str) -> int:
-    return max(1, round(len(text) / 4))
-
-
-def _estimated_cost(input_tokens: int, output_tokens: int, config) -> float:
-    return round(
-        input_tokens * config["PRICE_INPUT_PER_MILLION"] / 1_000_000
-        + output_tokens * config["PRICE_OUTPUT_PER_MILLION"] / 1_000_000,
-        8,
-    )

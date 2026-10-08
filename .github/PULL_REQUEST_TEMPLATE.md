@@ -1,88 +1,34 @@
 # Resumo
 
-<!-- Descreva brevemente o objetivo desta PR. -->
+**Card do projeto:**
 
-**Card do Jira:** #
+Explique em 2-3 frases a mudança e por que ela é necessária.
 
-## Alterações
-
-<!-- Liste as principais alterações realizadas. -->
+## O que mudou
 
 -
--
--
 
-## API
+## Requisitos afetados
 
-<!-- Preencha apenas se aplicável. -->
+- [ ] Agentes / LangGraph / guardrails
+- [ ] MongoDB / memória / sessões
+- [ ] Redis / ranking
+- [ ] Qdrant / RAG / fontes
+- [ ] Neo4j / traversal
+- [ ] MCP / A2A / API
+- [ ] Documentação / infraestrutura
 
-- Endpoint(s):
-- Schema(s) / contrato(s):
-- Regra(s) de negócio:
+## Como foi verificado
 
-### Camadas alteradas
-
-> Marque os itens alterados substituindo `⬜` por `✅`.
-
-- ⬜ Blueprint / rota
-- ⬜ Serviço
-- ⬜ Grafo / nó de agente
-- ⬜ Prompt / agente LangChain
-- ⬜ Guardrail / juiz factual
-- ⬜ Schema / validação
-- ⬜ OpenAPI / configuração
-
-## Dados e Integrações
-
-> Marque apenas o que foi alterado substituindo `⬜` por `✅`.
-
-- ⬜ MongoDB (sessões, mensagens ou memória)
-- ⬜ Redis (ranking de rotas)
-- ⬜ Qdrant / RAG / fontes
-- ⬜ MCP
-- ⬜ A2A
-- ⬜ Autenticação / privacidade
-- ⬜ Não se aplica
-
-## Testes
-
-> Marque o que foi validado substituindo `⬜` por `✅`.
-
-- ⬜ Testes unitários
-- ⬜ Testes de integração
-- ⬜ Avaliação RAG
-- ⬜ Teste manual
-- ⬜ Cenários de sucesso e erro
-- ⬜ Não se aplica
-
-**Comandos executados e resultado:**
+Comandos e resultados; indique serviços remotos não testados.
 
 ```text
-<!-- Ex.: python -m pytest -m "not integration" -q -->
+python -m pytest -m "not integration" -q
 ```
 
-## Impacto
+## Antes de revisar
 
-> Marque os impactos aplicáveis substituindo `⬜` por `✅`.
-
-- ⬜ API / cliente mobile
-- ⬜ Dados ou memória
-- ⬜ Fontes / índice RAG
-- ⬜ Documentação
-- ⬜ Infraestrutura / configuração
-- ⬜ Não há impacto externo
-
-## Checklist
-
-> Marque os itens concluídos substituindo `⬜` por `✅`.
-
-- ⬜ Código segue a arquitetura Flask e o fluxo de agentes do projeto
-- ⬜ Entradas e saídas possuem validação adequada
-- ⬜ Sessões e memórias permanecem isoladas por `user_id`
-- ⬜ Alterações no RAG preservam fonte e página quando disponíveis
-- ⬜ Não há secrets, credenciais ou dados sensíveis versionados
-- ⬜ Documentação e métricas atualizadas, quando necessário
-
-## Observações
-
-<!-- Informe pontos de atenção, migrações, reindexação ou dependências desta PR. -->
+- [ ] Contratos e documentação refletem o código atual
+- [ ] Fontes e páginas são preservadas nas respostas técnicas
+- [ ] Nenhum segredo ou dado pessoal foi incluído
+- [ ] Limitações conhecidas estão descritas acima

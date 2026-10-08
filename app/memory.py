@@ -1,4 +1,4 @@
-"""Memória de curto e longo prazo persistida exclusivamente no MongoDB."""
+"""Sessões e mensagens no MongoDB com recuperação semântica de resumos no Qdrant."""
 
 from __future__ import annotations
 

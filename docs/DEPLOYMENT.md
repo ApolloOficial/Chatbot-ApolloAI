@@ -3,7 +3,8 @@
 ## AWS Learner Lab
 
 A implantação oficial usa K3s em uma única EC2. Essa escolha fornece Kubernetes
-e mantém o orçamento abaixo de US$ 50 sem o custo fixo do EKS. Consulte
+sem um plano de controle EKS separado. O consumo depende dos recursos e do
+tempo de uso; `AWS_LAB_BUDGET_USD` define a referência de orçamento. Consulte
 [AWS_LEARNER_LAB.md](AWS_LEARNER_LAB.md).
 
 O fluxo é:
@@ -23,6 +24,10 @@ O fluxo é:
 - Redis com `rediss://`;
 - Qdrant com HTTPS e chave de API;
 - Groq no plano gratuito, sem fallback de provedor.
+
+O Neo4j é um extra independente: configure as três variáveis `NEO4J_*` e rode
+`python -m scripts.seed_neo4j` para demonstrar o traversal de BD2. A API de
+chat e o readiness principal não dependem dessa instância; veja [NEO4J.md](NEO4J.md).
 
 O processo recusa URLs locais, ausência de autenticação e dependências
 obrigatórias desabilitadas. `/live` verifica o processo; `/health` retorna 200

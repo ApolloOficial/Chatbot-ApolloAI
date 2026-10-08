@@ -1,40 +1,21 @@
-# Checklist de integração com o aplicativo mobile
+# Integração com o aplicativo Apollo
 
-## Topologia recomendada
+## Autenticação e conexão
 
 ```text
-Aplicativo Apollo → backend/gateway autenticado do Apollo → ApolloAI → MongoDB / Redis / Qdrant remotos / Groq
+Aplicativo Apollo → backend autenticado do Apollo → ApolloAI → serviços remotos
 ```
 
-O aplicativo não deve conter `APOLLOAI_API_TOKEN`, credenciais de banco ou chaves do provedor de IA. O backend/gateway valida a sessão do usuário, gera uma identidade pseudonimizada e chama o ApolloAI por HTTPS com `Authorization: Bearer` e `X-User-ID`.
+O backend Apollo valida a sessão do usuário e chama a API por HTTPS com
+`Authorization: Bearer` e `X-User-ID`. A identidade do header prevalece sobre
+o `user_id` do corpo. O token autentica o serviço chamador e permanece no
+backend; o aplicativo não recebe credenciais do ApolloAI, bancos ou provedor de IA.
 
-## O que já está pronto
+O ApolloAI valida um token de serviço compartilhado. Não valida diretamente
+JWT/OIDC de usuários finais. Rate limiting e limites por usuário pertencem
+ao gateway que integra o aplicativo à API.
 
-- ✅ `POST /chat` com validação Pydantic e contexto tipado do ativo;
-- ✅ `POST /sessions/{session_id}/close` para resumo final e encerramento;
-- ✅ respostas estruturadas com status, rota, fontes, página e alertas;
-- ✅ isolamento de sessões por identidade e bloqueio de acesso cruzado;
-- ✅ autenticação serviço-a-serviço configurável;
-- ✅ memória persistente no MongoDB e suporte Redis remoto;
-- ✅ RAG com fontes NREL/IEA PVPS, guardrails e juiz factual;
-- ✅ OpenAPI, Swagger UI, `/live`, `/health` e métricas Prometheus;
-- ✅ Docker, base Kubernetes e testes automatizados de API, RAG, MCP e A2A.
-
-## Bloqueadores para integração em homologação
-
-### P0 — obrigatórios
-
-- [ ] **Definir o caminho de autenticação.** Confirmar que o mobile chamará o backend Apollo, e não o ApolloAI diretamente. Se a chamada direta for obrigatória, substituir o segredo estático atual por validação de JWT/OIDC antes da integração.
-- [ ] **Publicar um ambiente de homologação HTTPS.** Escolher cluster/provedor, publicar imagem imutável, configurar IPv4 ou hostname público, certificado, Ingress/Gateway e Secret Manager.
-- [ ] **Deixar `/health` saudável no ambiente implantado.** Validar MongoDB Atlas, Redis Cloud, RAG e MCP a partir da rede do cluster. A conexão TLS do Atlas ainda precisa ser confirmada fora da rede local atual.
-- [ ] **Configurar segredos de homologação.** Definir token exclusivo, chave do Qdrant, URIs gerenciadas e `GROQ_API_KEY` de uma conta mantida no plano gratuito.
-- [ ] **Congelar ou versionar o contrato.** O endpoint atual é `/chat`; decidir se a integração será mantida assim ou publicada como `/v1/chat` antes de distribuir o app.
-- [ ] **Definir idempotência.** Retries de rede do mobile podem duplicar mensagens. Adicionar uma chave de requisição/idempotência ou definir uma política explícita antes de habilitar retry automático.
-- [ ] **Executar teste ponta a ponta com o mobile.** Validar autenticação, criação e retomada de `session_id`, envio de contexto, exibição de fontes, encerramento de sessão e todos os códigos HTTP.
-
-## Contrato que o cliente precisa implementar
-
-O backend chamador envia:
+## Envio de mensagens
 
 ```http
 POST /chat
@@ -45,9 +26,9 @@ Content-Type: application/json
 
 ```json
 {
-  "user_id": "identidade-substituida-pelo-header",
+  "user_id": "tecnico-001",
   "session_id": "uuid-da-conversa",
-  "pergunta": "Mensagem do técnico",
+  "pergunta": "Quais fatores reduzem a eficiência de um módulo fotovoltaico?",
   "contexto": {
     "componente": "módulo fotovoltaico",
     "fabricante": "opcional",
@@ -59,31 +40,41 @@ Content-Type: application/json
 }
 ```
 
-O cliente deve tratar:
+O cliente mantém o mesmo `session_id` durante a conversa e usa um novo
+identificador ao iniciar outra sessão. A resposta contém `resposta`, `status`,
+`rota`, `agentes_chamados`, `fontes`, `alerta_seguranca` e `motivo_bloqueio`.
+As fontes incluem documento, página e URL quando disponíveis. O contrato
+completo está em `/openapi.json` e `/docs`.
 
-| HTTP | Comportamento esperado |
+| Resposta | Tratamento pelo cliente |
 |---|---|
 | `200` + `sucesso` | Exibir resposta e referências |
-| `200` + `bloqueado` | Exibir recusa segura sem retry automático |
+| `200` + `bloqueado` | Exibir recusa; não repetir automaticamente |
 | `200` + `esclarecimento` | Exibir limitação e solicitar informação adicional |
-| `401` | Renovar autenticação no backend; nunca embutir token fixo no app |
-| `403` | Descartar a sessão local incompatível e impedir acesso cruzado |
-| `422` | Corrigir o payload; não repetir sem alteração |
-| `503` | Mostrar indisponibilidade e permitir retry controlado |
+| `401` | Verificar autenticação e identidade no backend |
+| `403` | Impedir acesso à sessão de outra identidade |
+| `413` | Reduzir o tamanho do payload |
+| `422` | Corrigir os campos indicados na validação |
+| `503` | Informar indisponibilidade e permitir nova tentativa controlada |
+| `500` | Informar falha interna e registrar o incidente no backend |
 
-## Validações antes de produção
+A API não implementa chave de idempotência. Repetir uma requisição pode
+duplicar mensagens já persistidas; o cliente não deve repetir envios
+automaticamente após um timeout. A resposta chega ao término do fluxo,
+sem streaming, e o timeout do gateway deve considerar a execução dos agentes.
 
-- [ ] medir latência p50/p95 e definir timeout do cliente/gateway compatível com o fluxo multiagente;
-- [ ] executar carga para a quantidade prevista de usuários e configurar réplicas/HPA;
-- [ ] implementar rate limiting, limite por usuário e proteção contra abuso no gateway;
-- [ ] criar dashboards e alertas para erro, latência, MongoDB, Redis, MCP e provedor de IA;
-- [ ] validar política de retenção, pseudonimização, consentimento e exclusão de dados;
-- [ ] confirmar backup/restauração do MongoDB e estratégia de recuperação;
-- [ ] validar UX em rede lenta, perda de conexão e retomada da conversa;
-- [ ] revisar exibição de alertas de segurança e links das fontes no mobile;
-- [ ] executar teste de segurança e revisar permissões do ambiente;
-- [ ] obter aceite funcional dos técnicos e registrar critérios de go-live.
+## Encerramento da sessão
 
-## Definição de pronto
+`POST /sessions/{session_id}/close`, com a mesma autenticação e um corpo
+`{"user_id": "tecnico-001"}`, gera o resumo final e marca a sessão como
+encerrada. O cliente inicia outra conversa com um novo `session_id`.
 
-A integração está pronta quando um build de homologação do mobile consegue conversar por HTTPS sem possuir segredos do ApolloAI, manter isolamento e continuidade de sessão, apresentar fontes e alertas, recuperar-se dos erros definidos e passar o teste ponta a ponta com `/health` saudável no ambiente implantado.
+## Saúde e interface de teste
+
+`/live` verifica se a API responde; `/health` consulta MongoDB, Redis, Qdrant e
+MCP. `/metrics` fornece os indicadores ao Prometheus. A configuração do painel
+está em [PROMETHEUS_PRODUCTION.md](PROMETHEUS_PRODUCTION.md).
+
+O diretório `frontend` contém uma interface HTML/JS de teste. Ela não envia
+o token de serviço e, por isso, não se autentica diretamente na API configurada
+para produção. A integração do produto passa pelo backend Apollo.

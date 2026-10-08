@@ -1,4 +1,4 @@
-"""Configuração centralizada, sem conexão com PostgreSQL."""
+"""Variáveis de ambiente e validação das dependências remotas da API."""
 
 from __future__ import annotations
 
@@ -50,6 +50,10 @@ class Config:
     REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() == "true"
     REDIS_REQUIRED = os.getenv("REDIS_REQUIRED", "true").lower() == "true"
     REDIS_TIMEOUT_SECONDS = float(os.getenv("REDIS_TIMEOUT_SECONDS", "5"))
+    NEO4J_URI = os.getenv("NEO4J_URI")
+    NEO4J_USER = os.getenv("NEO4J_USER")
+    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+    NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
     AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
     AI_MODEL = os.getenv("AI_MODEL", "")
@@ -80,7 +84,7 @@ class Config:
     AVG_MESSAGES_PER_USER = float(os.getenv("AVG_MESSAGES_PER_USER", "5"))
     AVG_INPUT_TOKENS = float(os.getenv("AVG_INPUT_TOKENS", "700"))
     AVG_OUTPUT_TOKENS = float(os.getenv("AVG_OUTPUT_TOKENS", "350"))
-    AVG_AGENTS_PER_REQUEST = float(os.getenv("AVG_AGENTS_PER_REQUEST", "4"))
+    AVG_AGENTS_PER_REQUEST = float(os.getenv("AVG_AGENTS_PER_REQUEST", "5"))
     AVG_RAG_QUERIES = float(os.getenv("AVG_RAG_QUERIES", "1"))
     ESTIMATED_RESOLUTION_RATE = float(os.getenv("ESTIMATED_RESOLUTION_RATE", "0.75"))
     ESTIMATED_MINUTES_SAVED = float(os.getenv("ESTIMATED_MINUTES_SAVED", "5"))
