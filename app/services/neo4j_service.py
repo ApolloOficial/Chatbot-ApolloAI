@@ -47,7 +47,10 @@ class SolarGraph:
             try:
                 from neo4j import GraphDatabase
 
-                self.driver = GraphDatabase.driver(uri, auth=(user, password))
+                self.driver = GraphDatabase.driver(
+                    uri, auth=(user, password), connection_timeout=1.0,
+                    connection_acquisition_timeout=2.0,
+                )
             except Exception as error:
                 raise Neo4jUnavailable("Não foi possível conectar ao Neo4j.") from error
 

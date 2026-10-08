@@ -28,6 +28,8 @@ O fluxo é:
 O Neo4j é um extra independente: configure as três variáveis `NEO4J_*` e rode
 `python -m scripts.seed_neo4j` para demonstrar o traversal de BD2. A API de
 chat e o readiness principal não dependem dessa instância; veja [NEO4J.md](NEO4J.md).
+`/health` mostra `neo4j` como `disponivel`, `indisponivel` ou `nao_configurado`,
+sem incluir esse extra no cálculo do status HTTP geral.
 No K3s, inclua `NEO4J_URI`, `NEO4J_USER` e `NEO4J_PASSWORD` juntos no segredo
 do AWS Secrets Manager antes de executar `deploy/k3s/sync-secret.sh`.
 

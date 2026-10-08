@@ -72,6 +72,30 @@ def test_graph_endpoint_auth_and_unavailable(client, app_bundle):
     assert response.json["total"] == 1
 
 
+def test_health_reports_optional_neo4j_without_degrading_api(client, app_bundle):
+    app = app_bundle[0]
+    app.config.update(NEO4J_URI=None, NEO4J_USER=None, NEO4J_PASSWORD=None)
+    assert client.get("/health").json["neo4j"] == "nao_configurado"
+
+    app.config.update(NEO4J_URI="bolt://example", NEO4J_USER="neo4j", NEO4J_PASSWORD="test")
+    app.extensions["apollo_services"]["knowledge_graph"] = SolarGraph(
+        "bolt://example", "neo4j", "test", driver=FakeDriver(),
+    )
+    assert client.get("/health").json["neo4j"] == "disponivel"
+
+    class FailingDriver:
+        def session(self, database):
+            raise RuntimeError("offline")
+
+    app.extensions["apollo_services"]["knowledge_graph"] = SolarGraph(
+        "bolt://example", "neo4j", "test", driver=FailingDriver(),
+    )
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json["status"] == "ok"
+    assert response.json["neo4j"] == "indisponivel"
+
+
 @pytest.mark.integration
 def test_business_traversal_against_neo4j():
     settings = [os.getenv(name) for name in ("NEO4J_TEST_URI", "NEO4J_TEST_USER", "NEO4J_TEST_PASSWORD")]

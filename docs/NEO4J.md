@@ -24,3 +24,4 @@ No K3s, salve as três chaves no AWS Secrets Manager e sincronize o Secret antes
 Pergunta de negócio: **“Quais modos de falha podem afetar o cabo do sistema e quais ações de avaliação estão relacionadas?”** A consulta percorre três relações, de `Sistema` até `AcaoAvaliacao`. Ela retorna `sistema`, `componente`, `modo_falha`, `acao_avaliacao` e `fonte`; portanto não é uma busca por um único nó. `Módulo` e `Inversor` também têm caminhos de exemplo. A rota retorna `503` se o Neo4j não estiver configurado ou acessível.
 
 Neo4j é um extra independente: o chatbot continua funcional sem ele. A consulta é somente leitura; a carga é feita pelo comando explícito, não a cada pergunta.
+O campo `neo4j` de `/health` informa sua disponibilidade sem afetar o readiness principal.
