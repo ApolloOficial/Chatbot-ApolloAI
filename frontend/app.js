@@ -1,13 +1,5 @@
-// ============================================================
-// Configuração
-// ============================================================
-// Interface local de testes; o aplicativo mobile é o cliente oficial.
 const API_BASE = window.location.origin === "null" ? "http://localhost:5000" : window.location.origin;
 const CHAT_ENDPOINT = `${API_BASE}/chat`;
-
-// ============================================================
-// Elementos
-// ============================================================
 const thread = document.getElementById("thread");
 const threadEmpty = document.getElementById("thread-empty");
 const composer = document.getElementById("composer");
@@ -17,10 +9,6 @@ const sessionIdEl = document.getElementById("session-id");
 const resetButton = document.getElementById("reset-session");
 const statusDot = document.getElementById("status-dot");
 const hint = document.getElementById("hint");
-
-// ============================================================
-// Sessão
-// ============================================================
 const SESSION_STORAGE_KEY = "apolloai_session_id";
 const USER_STORAGE_KEY = "apolloai_user_id";
 
@@ -65,10 +53,6 @@ if (!userId) {
 exibirSessionId(sessionId);
 
 resetButton.addEventListener("click", iniciarNovaSessao);
-
-// ============================================================
-// Utilidades de UI
-// ============================================================
 function setHint(texto, comoErro = false) {
   hint.textContent = texto || "";
   hint.classList.toggle("is-error", comoErro);
@@ -76,12 +60,6 @@ function setHint(texto, comoErro = false) {
 
 function marcarStatus(online) {
   statusDot.classList.toggle("is-offline", !online);
-}
-
-function escaparHtml(texto) {
-  const div = document.createElement("div");
-  div.textContent = texto;
-  return div.innerHTML;
 }
 
 function rolarParaFinal() {
@@ -101,7 +79,7 @@ function adicionarMensagem({ tipo, texto, agentes }) {
 
   const bubble = document.createElement("div");
   bubble.className = "message__bubble";
-  bubble.innerHTML = escaparHtml(texto);
+  bubble.textContent = texto;
   wrapper.appendChild(bubble);
 
   if (agentes && agentes.length > 0) {
@@ -144,10 +122,6 @@ function removerIndicadorDigitando() {
   const el = document.getElementById("typing-indicator");
   if (el) el.remove();
 }
-
-// ============================================================
-// Textarea: auto-resize + enviar com Enter
-// ============================================================
 inputPergunta.addEventListener("input", () => {
   inputPergunta.style.height = "auto";
   inputPergunta.style.height = Math.min(inputPergunta.scrollHeight, 140) + "px";
@@ -160,9 +134,6 @@ inputPergunta.addEventListener("keydown", (evento) => {
   }
 });
 
-// ============================================================
-// Envio da pergunta
-// ============================================================
 composer.addEventListener("submit", async (evento) => {
   evento.preventDefault();
 
@@ -194,7 +165,6 @@ composer.addEventListener("submit", async (evento) => {
 
     const dados = await resposta.json();
     marcarStatus(true);
-    removerIndicadorDigitando();
 
     adicionarMensagem({
       tipo: "assistant",
@@ -203,7 +173,6 @@ composer.addEventListener("submit", async (evento) => {
     });
   } catch (erro) {
     marcarStatus(false);
-    removerIndicadorDigitando();
     adicionarMensagem({
       tipo: "error",
       texto: erro.message.includes("Failed to fetch")
@@ -212,11 +181,11 @@ composer.addEventListener("submit", async (evento) => {
     });
     setHint(erro.message, true);
   } finally {
+    removerIndicadorDigitando();
     botaoEnviar.disabled = false;
     inputPergunta.disabled = false;
     inputPergunta.focus();
   }
 });
 
-// Foco inicial
 inputPergunta.focus();

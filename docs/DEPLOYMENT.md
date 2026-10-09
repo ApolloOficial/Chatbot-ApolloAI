@@ -3,7 +3,8 @@
 ## AWS Learner Lab
 
 A implantação oficial usa K3s em uma única EC2. Essa escolha fornece Kubernetes
-e mantém o orçamento abaixo de US$ 50 sem o custo fixo do EKS. Consulte
+sem um plano de controle EKS separado. O consumo depende dos recursos e do
+tempo de uso; `AWS_LAB_BUDGET_USD` define a referência de orçamento. Consulte
 [AWS_LEARNER_LAB.md](AWS_LEARNER_LAB.md).
 
 O fluxo é:
@@ -23,6 +24,14 @@ O fluxo é:
 - Redis com `rediss://`;
 - Qdrant com HTTPS e chave de API;
 - Groq no plano gratuito, sem fallback de provedor.
+
+O Neo4j é um extra independente: configure as três variáveis `NEO4J_*` e rode
+`python -m scripts.seed_neo4j` para demonstrar o traversal de BD2. A API de
+chat e o readiness principal não dependem dessa instância; veja [NEO4J.md](NEO4J.md).
+`/health` mostra `neo4j` como `disponivel`, `indisponivel` ou `nao_configurado`,
+sem incluir esse extra no cálculo do status HTTP geral.
+No K3s, inclua `NEO4J_URI`, `NEO4J_USER` e `NEO4J_PASSWORD` juntos no segredo
+do AWS Secrets Manager antes de executar `deploy/k3s/sync-secret.sh`.
 
 O processo recusa URLs locais, ausência de autenticação e dependências
 obrigatórias desabilitadas. `/live` verifica o processo; `/health` retorna 200
@@ -44,6 +53,9 @@ O Secret não possui arquivo de exemplo com valores substituíveis. Seu contrato
 - `QDRANT_API_KEY`;
 - `MONGODB_URI`;
 - `REDIS_URL`.
+
+Opcionalmente, o mesmo segredo recebe as três chaves `NEO4J_*`; uma configuração
+incompleta é recusada pelo script de sincronização.
 
 O ServiceAccount não recebe IAM Role. Em K3s, o host EC2 usa o
 `LabInstanceProfile` somente durante a sincronização do segredo.

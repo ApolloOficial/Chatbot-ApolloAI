@@ -1,8 +1,4 @@
-"""Vetores locais no Qdrant para documentos e resumos de sessões.
-
-O MongoDB continua sendo a fonte de verdade da memória. Este módulo guarda
-somente vetores e payloads suficientes para recuperar os dados semanticamente.
-"""
+"""Embeddings locais e armazenamento vetorial remoto de documentos e resumos no Qdrant."""
 
 from __future__ import annotations
 

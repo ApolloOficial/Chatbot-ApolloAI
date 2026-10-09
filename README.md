@@ -22,11 +22,11 @@ O chatbot oferece orientação: não aciona equipamentos, registra manutenções
 - **API:** Flask recebe perguntas do aplicativo Apollo e devolve respostas com fontes.
 - **Agentes:** sete papéis construídos com LangChain e coordenados por LangGraph.
 - **RAG e segurança:** Qdrant recupera trechos técnicos; guardrails e juiz factual verificam o fluxo.
-- **Serviços:** MongoDB mantém sessões e memória, Redis apoia o ranking de rotas, MCP integra ferramentas e A2A permite comunicação entre agentes.
+- **Serviços:** MongoDB mantém sessões e memória, Redis apoia o ranking de rotas, MCP integra ferramentas e A2A expõe a API a agentes externos. Um grafo Neo4j demonstra o extra de BD2.
 - **Operação:** métricas Prometheus e implantação em K3s.
 
 ```text
-Requisição → guardrail de entrada → roteador → especialista → orquestrador
+Requisição → guardrail de entrada → roteador → especialista
            → juiz factual → guardrail de saída → resposta com fontes
 ```
 
@@ -83,6 +83,8 @@ A resposta inclui `session_id`, `resposta`, `status`, `agentes_chamados` e `font
 
 Outros endpoints: `GET /live`, `GET /health`, `GET /metrics`, `GET /openapi.json` e `GET /docs`. A API também oferece A2A (`/.well-known/agent-card.json`, `/a2a/v1`) e encerramento de sessão (`POST /sessions/{session_id}/close`). O contrato completo está no Swagger UI.
 
+**Extra Neo4j:** após configurar as três credenciais `NEO4J_*` e executar `python -m scripts.seed_neo4j`, consulte `GET /knowledge/impact?componente=Cabo`. A rota percorre sistema, componente, modo de falha e ação; veja [modelo e demonstração](docs/NEO4J.md). O chatbot não depende do Neo4j.
+
 ## Testes
 
 ```bash
@@ -98,3 +100,5 @@ Testes de integração MCP e avaliação do RAG dependem dos serviços remotos e
 - [Implantação](docs/DEPLOYMENT.md) · [AWS Learner Lab](docs/AWS_LEARNER_LAB.md) · [Integração mobile](docs/MOBILE_INTEGRATION.md)
 - [Autenticação](docs/AUTHENTICATION.md) · [MongoDB e memória](docs/MONGODB.md) · [Observabilidade](docs/OBSERVABILITY.md)
 - [Privacidade](docs/PRIVACY.md) · [Rastreabilidade dos requisitos de IA](docs/REQUIREMENTS_TRACEABILITY.md)
+- [Grafo Neo4j e pergunta de negócio](docs/NEO4J.md)
+- [Prometheus e Grafana em produção](docs/PROMETHEUS_PRODUCTION.md)

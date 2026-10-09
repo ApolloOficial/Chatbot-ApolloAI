@@ -39,6 +39,7 @@
 - ⬜ MongoDB (sessões, mensagens ou memória)
 - ⬜ Redis (ranking de rotas)
 - ⬜ Qdrant / RAG / fontes
+- ⬜ Neo4j / grafo de conhecimento
 - ⬜ MCP
 - ⬜ A2A
 - ⬜ Autenticação / privacidade

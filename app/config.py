@@ -1,4 +1,4 @@
-"""Configuração centralizada, sem conexão com PostgreSQL."""
+"""Variáveis de ambiente e validação das dependências remotas da API."""
 
 from __future__ import annotations
 
@@ -50,6 +50,10 @@ class Config:
     REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() == "true"
     REDIS_REQUIRED = os.getenv("REDIS_REQUIRED", "true").lower() == "true"
     REDIS_TIMEOUT_SECONDS = float(os.getenv("REDIS_TIMEOUT_SECONDS", "5"))
+    NEO4J_URI = os.getenv("NEO4J_URI")
+    NEO4J_USER = os.getenv("NEO4J_USER")
+    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+    NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
     AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
     AI_MODEL = os.getenv("AI_MODEL", "")

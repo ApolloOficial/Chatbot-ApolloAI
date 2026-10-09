@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: apolloai-hml
+resources:
+  - k8s/monitoring.yaml
+configMapGenerator:
+  - name: prometheus-config
+    files:
+      - prometheus.yml=k8s/prometheus.yml
+      - rules.yml
+  - name: grafana-datasource
+    files:
+      - prometheus.yml=grafana-datasource.yml
+  - name: grafana-provider
+    files:
+      - apolloai.yml=grafana-dashboard-provider.yml
+  - name: grafana-dashboard
+    files:
+      - apolloai.json=apolloai-dashboard.json

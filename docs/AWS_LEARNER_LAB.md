@@ -3,9 +3,8 @@
 ## Decisão de arquitetura
 
 O ApolloAI usa uma única instância EC2 para hospedar um cluster K3s de um nó.
-Essa arquitetura comprova containerização e orquestração Kubernetes sem criar um
-cluster EKS. O EKS custa US$ 0,10 por hora somente pelo plano de controle, cerca
-de US$ 73 por mês, antes da EC2, EBS e IPv4, e ultrapassa o orçamento de US$ 50.
+O K3s executa a orquestração Kubernetes na própria instância. O orçamento de
+referência do estimador é configurado por `AWS_LAB_BUDGET_USD`.
 
 ```mermaid
 flowchart LR
@@ -28,7 +27,11 @@ domínio próprio é opcional. O ServiceAccount identifica o Pod apenas dentro d
 Kubernetes. O acesso ao Secrets Manager é feito pelo `LabInstanceProfile` da
 EC2, sem credenciais AWS permanentes no Pod.
 
-## Estimativa mensal
+## Premissas de custo mensal
+
+Os valores abaixo são premissas do estimador, não uma cotação atual nem a
+fatura da conta AWS. O dimensionamento deve considerar também Prometheus,
+Grafana e o modelo local de embeddings.
 
 | Componente | 100 usuários/semana | 1.000 usuários/semana | Premissa |
 |---|---:|---:|---|
@@ -70,7 +73,7 @@ No CloudShell, confira a conta e obtenha o repositório:
 
 ```bash
 aws sts get-caller-identity --query Account --output text
-git clone -b feat/aws-learner-lab https://github.com/ApolloOficial/Chatbot-ApolloAI.git
+git clone https://github.com/ApolloOficial/Chatbot-ApolloAI.git
 cd Chatbot-ApolloAI
 bash deploy/aws/provision_ec2.sh
 ```
@@ -98,7 +101,7 @@ baixe o projeto:
 sudo cloud-init status --wait
 docker version
 git --version
-git clone -b feat/aws-learner-lab https://github.com/ApolloOficial/Chatbot-ApolloAI.git
+git clone https://github.com/ApolloOficial/Chatbot-ApolloAI.git
 cd Chatbot-ApolloAI
 ```
 
@@ -111,7 +114,7 @@ O Security Group criado pelo script permite:
 Associe um IPv4 estável enquanto o ambiente estiver em uso. Ao excluir a
 implantação, libere também a Elastic IP e o volume para interromper a cobrança.
 
-## 3. Recriar o segredo
+## 3. Configurar o segredo
 
 No AWS Secrets Manager, em `us-east-1`, crie `apolloai/hml` como JSON:
 
@@ -159,8 +162,9 @@ nano deploy/k3s/deploy.env
 ```
 
 Preencha a tag exata da imagem, IPv4 ou hostname público, origem CORS, URL do
-Qdrant, e-mail ACME, identificador do segredo e região. Para o IPv4
-`98.84.34.155`, use `CORS_ORIGINS=https://98.84.34.155`. O arquivo é ignorado
+Qdrant, e-mail ACME, identificador do segredo e região. Para servir a interface
+no mesmo IPv4, use `CORS_ORIGINS=https://IPV4_PUBLICO`, substituindo o marcador
+pelo endereço da instância. O arquivo é ignorado
 pelo Git.
 
 Implante:

@@ -1,4 +1,4 @@
-"""Executa o conjunto versionado de avaliação do RAG local."""
+"""Executa os casos de avaliação do RAG contra o índice remoto do Qdrant."""
 
 from __future__ import annotations
 

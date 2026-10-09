@@ -1,4 +1,4 @@
-"""Memória de curto e longo prazo persistida exclusivamente no MongoDB."""
+"""Sessões e mensagens no MongoDB com recuperação semântica de resumos no Qdrant."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pymongo import ASCENDING, DESCENDING, MongoClient
-from pymongo.errors import PyMongoError
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 from app.qdrant_store import QdrantSemanticStore, QdrantUnavailable
 
@@ -17,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 class MemoryUnavailable(RuntimeError):
     """Falha controlada de persistência sem revelar a URI."""
+
+
+class SessionClosed(RuntimeError):
+    """Uma sessão encerrada não pode receber novos turnos."""
 
 
 def utcnow() -> datetime:
@@ -94,13 +98,20 @@ class MongoMemoryRepository:
         now = utcnow()
         try:
             self.sessions.update_one(
-                {"user_id": user_id, "session_id": session_id},
+                {"user_id": user_id, "session_id": session_id, "status": {"$ne": "encerrada"}},
                 {"$setOnInsert": {
                     "user_id": user_id, "session_id": session_id, "created_at": now,
-                    "status": "ativa", "summary": "", "messages": [], "agents_called": [],
-                    "last_route": "fora_escopo", "message_count": 0,
+                    "status": "ativa", "summary": "", "message_count": 0,
                 }, "$set": {"updated_at": now}}, upsert=True,
             )
+        except DuplicateKeyError as error:
+            try:
+                session = self.sessions.find_one({"user_id": user_id, "session_id": session_id}, {"status": 1})
+            except PyMongoError as lookup_error:
+                self._raise(lookup_error)
+            if session and session.get("status") != "encerrada":
+                return
+            raise SessionClosed from error
         except PyMongoError as error:
             self._raise(error)
 
@@ -133,21 +144,9 @@ class MongoMemoryRepository:
         }
         try:
             self.messages.insert_one(message)
-            bounded = {key: value for key, value in message.items() if key not in {"_id", "user_id", "session_id", "expires_at"}}
             self.sessions.update_one(
                 {"user_id": user_id, "session_id": session_id},
-                {"$push": {"messages": {"$each": [bounded], "$slice": -self.max_context}},
-                 "$inc": {"message_count": 1}, "$set": {"updated_at": now},
-                 "$addToSet": {"agents_called": {"$each": metadata.get("agents_called", [])}}},
-            )
-        except PyMongoError as error:
-            self._raise(error)
-
-    def update_session_result(self, user_id: str, session_id: str, route: str) -> None:
-        try:
-            self.sessions.update_one(
-                {"user_id": user_id, "session_id": session_id},
-                {"$set": {"last_route": route, "updated_at": utcnow()}},
+                {"$inc": {"message_count": 1}, "$set": {"updated_at": now}},
             )
         except PyMongoError as error:
             self._raise(error)
@@ -186,7 +185,14 @@ class MongoMemoryRepository:
             self._raise(error)
 
     def save_observation(self, record: dict[str, Any]) -> None:
-        safe = {key: value for key, value in record.items() if key not in {"user_id", "session_id", "question", "answer"}}
+        fields = ("route", "agents_called", "blocked", "block_reason", "total_latency_ms",
+                  "agent_latencies_ms", "source_count")
+        safe = {key: record[key] for key in fields if key in record}
+        decision = record.get("judge_decision") or {}
+        safe["judge_decision"] = {key: decision[key] for key in (
+            "decisao", "fundamentada", "segura", "dentro_escopo", "fontes_validas",
+            "hipotese_como_diagnostico",
+        ) if key in decision}
         safe["created_at"] = utcnow()
         try:
             self.observability.insert_one(safe)

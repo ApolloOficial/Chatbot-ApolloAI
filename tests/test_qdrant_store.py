@@ -52,7 +52,6 @@ def test_document_and_memory_queries_use_original_collections(monkeypatch):
     store._ready = True
     monkeypatch.setattr(store, "_dependencies", lambda: (FakeClient(), models))
 
-    # A recuperação vetorial não deve ser descartada por falta de palavras idênticas.
     assert store.search_document_chunks(
         "What could explain lower energy output?", 1, query_vector=[0.0] * EMBEDDING_DIMENSIONS,
     )

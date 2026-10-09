@@ -1,4 +1,4 @@
-"""Avaliação determinística da recuperação antes de mudanças no RAG."""
+"""Avaliação da recuperação por acerto, posição dos resultados e rejeição fora do domínio."""
 
 from __future__ import annotations
 

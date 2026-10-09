@@ -1,0 +1,28 @@
+groups:
+  - name: apolloai-slo
+    rules:
+      - record: apolloai:sli_error_ratio:5m
+        expr: sum(rate(apolloai_turns_total{status="erro"}[5m])) / clamp_min(sum(rate(apolloai_turns_total[5m])), 0.000001)
+      - record: apolloai:sli_latency_p95:5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(apolloai_response_latency_seconds_bucket[5m])))
+      - alert: ApolloAIUnavailable
+        expr: absent(up{job="apolloai"}) or max(up{job="apolloai"}) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: ApolloAI sem alvo disponível para coleta
+      - alert: ApolloAIHighErrorRate
+        expr: apolloai:sli_error_ratio:5m > 0.05 and sum(increase(apolloai_turns_total[5m])) >= 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Mais de 5% dos turnos falharam
+      - alert: ApolloAIHighLatency
+        expr: apolloai:sli_latency_p95:5m > 8 and sum(increase(apolloai_turns_total[5m])) >= 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: p95 dos turnos acima de 8 segundos

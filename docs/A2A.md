@@ -38,3 +38,5 @@ Em produção, `PUBLIC_BASE_URL` deve ser uma URL HTTPS pública. O card não co
 Com autenticação habilitada, `metadata.userId` não é confiável e é substituído pelo header `X-User-ID` propagado pelo backend Apollo autenticado.
 
 Operações assíncronas, streaming, push notifications e arquivos não são anunciados nem aceitos nesta versão.
+
+Para demonstrar a integração entre processos, configure `PUBLIC_BASE_URL` e `APOLLOAI_API_TOKEN` no ambiente e execute `python -m scripts.demo_a2a_client`. O script separado lê o Agent Card e chama `SendMessage` usando a identidade de demonstração `tecnico-demo`. Ele exige a API e os serviços remotos funcionando; a suíte isolada testa apenas o contrato com dublês.

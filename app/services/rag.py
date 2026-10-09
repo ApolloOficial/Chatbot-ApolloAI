@@ -1,4 +1,4 @@
-"""Recuperação RAG a partir dos Markdown do corpus solar."""
+"""Indexação do corpus solar em Markdown e recuperação de trechos pelo Qdrant."""
 
 from __future__ import annotations
 
