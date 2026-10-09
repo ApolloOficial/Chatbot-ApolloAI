@@ -3,7 +3,7 @@
 | Funcionalidade | Implementação |
 |---|---|
 | API Flask com modelo generativo | `app/__init__.py`, `wsgi.py`, `app/llms.py` |
-| Cinco ou mais agentes | sete papéis em `app/prompts.py` e `app/llms.py` |
+| Cinco ou mais agentes | seis papéis em `app/prompts.py` e `app/llms.py` |
 | LangChain e LangGraph | `create_agent` em `app/llms.py`; `StateGraph` em `app/graph.py` |
 | Sessões por usuário e memória longa | `app/memory.py`, índices `(user_id, session_id)` e resumos |
 | Persistência conversacional | `ChatService` grava mensagens e metadados; falhas de dependência retornam erro controlado |
