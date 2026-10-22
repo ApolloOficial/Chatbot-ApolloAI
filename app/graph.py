@@ -9,7 +9,7 @@ from typing import Any, Literal, Protocol, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from app.guardrail import input_guardrail, output_guardrail
+from app.guardrail import OUT_OF_SCOPE_RESPONSE, input_guardrail, output_guardrail
 from app.llms import ProviderUnavailable
 from app.schemas import JudgeDecision
 
@@ -57,9 +57,20 @@ def _json_object(text: str) -> dict[str, Any]:
         return {}
 
 
-def _source_context(sources: list[dict[str, Any]]) -> str:
+NO_SOURCES_FOR_SPECIALIST = (
+    "Nenhum trecho técnico recuperado. Responda com conhecimento técnico geral consagrado, "
+    "começando com 'Orientação geral:', sem inventar valores, modelos, normas ou fontes."
+)
+NO_SOURCES_FOR_JUDGE = "Nenhuma fonte recuperada."
+REJECTED_ANSWER = (
+    "Não foi possível validar essa resposta com segurança. Informe o modelo e o sintoma "
+    "ou consulte um profissional qualificado."
+)
+
+
+def _source_context(sources: list[dict[str, Any]], empty: str = NO_SOURCES_FOR_JUDGE) -> str:
     if not sources:
-        return "Nenhum trecho técnico recuperado."
+        return empty
     parts = []
     for index, source in enumerate(sources, 1):
         parts.append(
@@ -138,7 +149,8 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
             prompt = (
                 f"PERGUNTA ORIGINAL:\n{state['question']}\n\nCONTEXTO DO ATIVO FORNECIDO PELO TÉCNICO:\n"
                 f"{json.dumps(state.get('context', {}), ensure_ascii=False)}\n\nMEMÓRIAS RELEVANTES:\n"
-                f"{json.dumps(state.get('memories', []), ensure_ascii=False)}\n\nTRECHOS RECUPERADOS:\n{_source_context(sources)}"
+                f"{json.dumps(state.get('memories', []), ensure_ascii=False)}\n\nTRECHOS RECUPERADOS:\n"
+                f"{_source_context(sources, NO_SOURCES_FOR_SPECIALIST)}"
             )
             draft, latencies, finished_at = timed(agent_name, prompt, state)
             return {
@@ -153,7 +165,7 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
         metrics.blocked.labels("fora_escopo").inc()
         return {
             "blocked": True, "block_reason": "fora_escopo", "status": "bloqueado", "sources": [],
-            "final_answer": "O ApolloAI atende somente a dúvidas relacionadas a ativos fotovoltaicos e manutenção. Posso ajudar com alguma questão técnica sobre sistemas solares?",
+            "final_answer": OUT_OF_SCOPE_RESPONSE,
         }
 
     def judge(state: GraphState) -> GraphState:
@@ -186,21 +198,9 @@ def build_graph(runtime: AgentRuntime, retriever: Retriever, metrics):
             decision = decision.model_copy(update={
                 "decisao": "rejeitada", "motivos": rejection_reasons,
             })
-        if state["route"] in TECHNICAL_ROUTES and not state.get("sources"):
-            decision = JudgeDecision(
-                decisao="rejeitada", fundamentada=False, segura=decision.segura,
-                dentro_escopo=decision.dentro_escopo, fontes_validas=False,
-                motivos=[*decision.motivos, "Não há fonte recuperada para sustentar a resposta técnica."],
-            )
         if decision.decisao == "rejeitada":
             metrics.judge_rejections.inc()
-            answer = (
-                "Não encontrei informações suficientes nas fontes técnicas disponíveis "
-                "para responder com segurança."
-                if state["route"] in TECHNICAL_ROUTES and not state.get("sources")
-                else "Não foi possível validar essa resposta com segurança. Reformule a pergunta "
-                "ou consulte um profissional qualificado."
-            )
+            answer = REJECTED_ANSWER
         elif decision.decisao == "corrigir":
             answer = corrected_answer
         else:
