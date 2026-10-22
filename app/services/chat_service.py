@@ -95,15 +95,16 @@ class ChatService:
                 "memories": [*recent, *long_term],
             })
             latency_ms = round((time.perf_counter() - started) * 1000, 2)
+            sources = [SourceReference.model_validate(item) for item in state.get("sources", [])]
             response = ChatResponse(
                 session_id=request.session_id, resposta=state["final_answer"], status=state.get("status", "sucesso"),
                 rota=state.get("route", "fora_escopo"), agentes_chamados=state.get("agents_called", []),
-                fontes=[SourceReference.model_validate(item) for item in state.get("sources", [])],
+                fontes=sources if self.config.get("EXPOSE_SOURCES") else [],
                 alerta_seguranca=state.get("safety_alert"), motivo_bloqueio=state.get("block_reason"),
             )
             metadata = {
                 "route": response.rota, "agents_called": response.agentes_chamados,
-                "sources": [source.model_dump(mode="json") for source in response.fontes],
+                "sources": [source.model_dump(mode="json") for source in sources],
                 "judge_decision": {key: value for key, value in state.get("judge_decision", {}).items()
                                    if key in {"decisao", "fundamentada", "segura", "dentro_escopo",
                                               "fontes_validas", "hipotese_como_diagnostico"}},
@@ -121,7 +122,7 @@ class ChatService:
                 self.memory.save_observation({
                     **{key: value for key, value in metadata.items() if key != "sources"},
                     "agent_latencies_ms": state.get("agent_latencies_ms", {}),
-                    "source_count": len(response.fontes),
+                    "source_count": len(sources),
                 })
             except MemoryUnavailable as error:
                 logger.warning("observacao_nao_persistida", extra={"error_type": type(error).__name__})
