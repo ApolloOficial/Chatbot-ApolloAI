@@ -65,6 +65,7 @@ class Config:
     MCP_REQUIRED = os.getenv("MCP_REQUIRED", "true").lower() == "true"
     MCP_TIMEOUT_SECONDS = float(os.getenv("MCP_TIMEOUT_SECONDS", "12"))
     MCP_SERVER_COMMAND = os.getenv("MCP_SERVER_COMMAND", "python -m app.mcp_server")
+    EXPOSE_SOURCES = os.getenv("EXPOSE_SOURCES", "false").lower() == "true"
     RAG_TOP_K = int(os.getenv("RAG_TOP_K", "5"))
     RAG_MIN_SCORE = float(os.getenv("RAG_MIN_SCORE", "0.35"))
     QDRANT_URL = os.getenv("QDRANT_URL")
