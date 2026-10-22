@@ -43,12 +43,14 @@ Content-Type: application/json
 O cliente mantém o mesmo `session_id` durante a conversa e usa um novo
 identificador ao iniciar outra sessão. A resposta contém `resposta`, `status`,
 `rota`, `agentes_chamados`, `fontes`, `alerta_seguranca` e `motivo_bloqueio`.
-As fontes incluem documento, página e URL quando disponíveis. O contrato
+Por padrão `fontes` volta vazio, para o app não exibir nomes de documentos; as
+fontes continuam salvas no histórico da sessão. Com `EXPOSE_SOURCES=true`, elas
+incluem documento, página e URL quando disponíveis. O contrato
 completo está em `/openapi.json` e `/docs`.
 
 | Resposta | Tratamento pelo cliente |
 |---|---|
-| `200` + `sucesso` | Exibir resposta e referências |
+| `200` + `sucesso` | Exibir a resposta (referências só se `fontes` vier preenchido) |
 | `200` + `bloqueado` | Exibir recusa; não repetir automaticamente |
 | `200` + `esclarecimento` | Exibir limitação e solicitar informação adicional |
 | `401` | Verificar autenticação e identidade no backend |
