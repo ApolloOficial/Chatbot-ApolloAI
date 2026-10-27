@@ -24,6 +24,9 @@ def test_basic_technical_questions_are_not_blocked(message):
 @pytest.mark.parametrize("message", [
     "Erro na placa, o que pode ser?",
     "Como instalar uma placa?",
+    "Qual a diferença entre preventiva e corretiva?",
+    "Quais EPIs usar na inspeção?",
+    "Como medir a tensão com segurança?",
 ])
 def test_domain_terms_override_semantic_out_of_scope(message):
     result = input_guardrail(message, lambda _: "FORA_ESCOPO")
