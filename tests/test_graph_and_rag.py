@@ -37,11 +37,38 @@ def test_rag_does_not_fallback_to_local_document(workspace_tmp_path):
         knowledge.retrieve("manutenção preventiva")
 
 
-def test_no_source_yields_insufficiency(client, payload):
+def test_no_source_answer_is_marked_as_general_guidance(client, payload):
+    response = client.post("/chat", json={**payload, "pergunta": "Assunto inexistente sobre módulo fotovoltaico"})
+    assert response.json["status"] == "sucesso"
+    assert response.json["resposta"].endswith("Orientação geral; confirme no manual do fabricante.")
+    assert response.json["fontes"] == []
+
+
+def test_no_source_answer_rejected_by_judge_is_not_delivered(client, payload, app_bundle, monkeypatch):
+    runtime = app_bundle[2]
+    original_invoke = runtime.invoke
+
+    def invoke(agent_name, content):
+        if agent_name == "juiz_factual":
+            return json.dumps({
+                "decisao": "rejeitada", "fundamentada": False, "segura": True,
+                "dentro_escopo": True, "fontes_validas": True,
+                "hipotese_como_diagnostico": False, "motivos": ["Valor inventado."],
+                "resposta_corrigida": None,
+            })
+        return original_invoke(agent_name, content)
+
+    monkeypatch.setattr(runtime, "invoke", invoke)
     response = client.post("/chat", json={**payload, "pergunta": "Assunto inexistente sobre módulo fotovoltaico"})
     assert response.json["status"] == "esclarecimento"
-    assert "informações suficientes" in response.json["resposta"]
-    assert response.json["fontes"] == []
+    assert "Não foi possível validar" in response.json["resposta"]
+    assert "Orientação geral" not in response.json["resposta"]
+
+
+def test_specialist_without_sources_is_told_to_use_general_knowledge(client, payload, app_bundle):
+    client.post("/chat", json={**payload, "pergunta": "Assunto inexistente sobre módulo fotovoltaico"})
+    specialist_calls = [content for name, content in app_bundle[2].calls if name == "ativos_solares"]
+    assert "Orientação geral:" in specialist_calls[0]
 
 
 def test_context_cannot_bypass_input_guardrail(client, payload):
@@ -76,6 +103,21 @@ def test_chat_executes_full_graph(client, payload):
     response = client.post("/chat", json=payload)
     assert response.json["agentes_chamados"] == ["roteador", "ativos_solares", "juiz_factual"]
     assert response.json["fontes"][0]["documento"].startswith("nrel")
+
+
+def test_source_file_name_written_by_the_model_is_removed(client, payload, app_bundle, monkeypatch):
+    runtime = app_bundle[2]
+    original_invoke = runtime.invoke
+
+    def invoke(agent_name, content):
+        if agent_name == "ativos_solares":
+            return ("Pode ser sujeira ou conector solto (nrel_pv_om_best_practices_sintese.md). Confirme em campo."
+                    "\n\nFontes:\n- nrel_pv_om_best_practices_sintese.md")
+        return original_invoke(agent_name, content)
+
+    monkeypatch.setattr(runtime, "invoke", invoke)
+    response = client.post("/chat", json=payload)
+    assert response.json["resposta"] == "Pode ser sujeira ou conector solto. Confirme em campo."
 
 
 @pytest.mark.parametrize("failed_check", [
