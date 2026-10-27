@@ -1,89 +1,47 @@
-# Resumo
+#### Descrição
 
-<!-- Descreva brevemente o objetivo desta PR. -->
+<!-- Escreva uma breve explicação do que foi feito na branch -->
 
-**Card do Jira:** #
+---
 
-## Alterações
+#### Tipo de alteração
 
-<!-- Liste as principais alterações realizadas. -->
+<!--
+Apague as opções que não se aplicam a esse PR e preencha a descrição ao lado da que você manteve:
 
--
--
--
+`feat`: Adição de uma nova funcionalidade
+`fix`: Correção de um bug
+`docs`: Alteração apenas de documentação (README, comentários, etc.)
+`style`: Formatação, espaçamento, ponto e vírgula — sem mudança de lógica
+`refactor`: Reestruturação de código que não corrige bug nem adiciona funcionalidade
+`perf`: Alteração que melhora performance
+`test`: Adição ou correção de testes
+`build`: Mudanças que afetam o build ou dependências externas (ex: package.json)
+`ci`: Mudanças em arquivos e scripts de configuração de CI
+`chore`: Tarefas de manutenção que não alteram código de produção (ex: configs, scripts)
+`revert`: Reversão de um commit anterior
+-->
 
-## API
+`x`: descrição
 
-<!-- Preencha apenas se aplicável. -->
+---
 
-- Endpoint(s):
-- Schema(s) / contrato(s):
-- Regra(s) de negócio:
+#### Checklist
 
-### Camadas alteradas
+<!-- Preencha com ✅ ou ❌. Se não se aplica a este PR, escreva N/A. -->
 
-> Marque os itens alterados substituindo `⬜` por `✅`.
+- [ ] Validei o fluxo dos agentes e os cenários de sucesso e bloqueio afetados
+- [ ] Verifiquei o isolamento das sessões e memórias por usuário
+- [ ] Preservei a rastreabilidade das fontes do RAG
+- [ ] Validei as integrações alteradas (MongoDB, Redis, Qdrant, Neo4j, MCP ou A2A)
+- [ ] Executei os testes aplicáveis e registrei comandos e resultados nas observações
+- [ ] Não incluí credenciais nem dados sensíveis em código, logs ou evidências
+- [ ] Atualizei a documentação quando houve mudança de uso ou configuração
+- [ ] Commits seguem Conventional Commits e a branch possui nome em inglês
 
-- ⬜ Blueprint / rota
-- ⬜ Serviço
-- ⬜ Grafo / nó de agente
-- ⬜ Prompt / agente LangChain
-- ⬜ Guardrail / juiz factual
-- ⬜ Schema / validação
-- ⬜ OpenAPI / configuração
+---
 
-## Dados e Integrações
+#### Observações
 
-> Marque apenas o que foi alterado substituindo `⬜` por `✅`.
+<!-- Informe evidências de validação, dependências ou pontos de atenção. Remova a seção quando não se aplicar. -->
 
-- ⬜ MongoDB (sessões, mensagens ou memória)
-- ⬜ Redis (ranking de rotas)
-- ⬜ Qdrant / RAG / fontes
-- ⬜ Neo4j / grafo de conhecimento
-- ⬜ MCP
-- ⬜ A2A
-- ⬜ Autenticação / privacidade
-- ⬜ Não se aplica
-
-## Testes
-
-> Marque o que foi validado substituindo `⬜` por `✅`.
-
-- ⬜ Testes unitários
-- ⬜ Testes de integração
-- ⬜ Avaliação RAG
-- ⬜ Teste manual
-- ⬜ Cenários de sucesso e erro
-- ⬜ Não se aplica
-
-**Comandos executados e resultado:**
-
-```text
-<!-- Ex.: python -m pytest -m "not integration" -q -->
-```
-
-## Impacto
-
-> Marque os impactos aplicáveis substituindo `⬜` por `✅`.
-
-- ⬜ API / cliente mobile
-- ⬜ Dados ou memória
-- ⬜ Fontes / índice RAG
-- ⬜ Documentação
-- ⬜ Infraestrutura / configuração
-- ⬜ Não há impacto externo
-
-## Checklist
-
-> Marque os itens concluídos substituindo `⬜` por `✅`.
-
-- ⬜ Código segue a arquitetura Flask e o fluxo de agentes do projeto
-- ⬜ Entradas e saídas possuem validação adequada
-- ⬜ Sessões e memórias permanecem isoladas por `user_id`
-- ⬜ Alterações no RAG preservam fonte e página quando disponíveis
-- ⬜ Não há secrets, credenciais ou dados sensíveis versionados
-- ⬜ Documentação e métricas atualizadas, quando necessário
-
-## Observações
-
-<!-- Informe pontos de atenção, migrações, reindexação ou dependências desta PR. -->
