@@ -42,7 +42,9 @@ _DANGEROUS = (
 )
 _DOMAIN = re.compile(
     r"\b(placas?|paineis|painel|modulos?|fotovoltaic\w*|solar|solares|inversor\w*|strings?|"
-    r"conectores?|mc4|apollo|barcode|codigo\s+de\s+barras|ordem\s+de\s+servico)\b"
+    r"conectores?|mc4|apollo|barcode|codigo\s+de\s+barras|ordem\s+de\s+servico|"
+    r"manutenc\w*|preventiv\w*|preditiv\w*|corretiv\w*|inspec\w*|epis?|celulas?|"
+    r"degradac\w*|aterramento|tensao)\b"
 )
 _SOCIAL_PATTERNS = {
     "saudacao": (
