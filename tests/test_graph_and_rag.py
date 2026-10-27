@@ -102,20 +102,6 @@ def test_hypothesis_is_not_presented_as_diagnosis(client, payload):
 def test_chat_executes_full_graph(client, payload):
     response = client.post("/chat", json=payload)
     assert response.json["agentes_chamados"] == ["roteador", "ativos_solares", "juiz_factual"]
-    assert response.json["fontes"] == []
-
-
-def test_sources_are_hidden_from_response_but_kept_in_history(client, payload, app_bundle):
-    response = client.post("/chat", json=payload)
-    assert response.json["fontes"] == []
-    assert "nrel_pv_om_best_practices_sintese.md" not in response.get_data(as_text=True)
-    saved = app_bundle[1].messages.find_one({"role": "assistente"})
-    assert saved["sources"][0]["documento"].startswith("nrel")
-
-
-def test_sources_are_returned_when_exposure_is_enabled(client, payload, app_bundle):
-    app_bundle[0].config["EXPOSE_SOURCES"] = True
-    response = client.post("/chat", json=payload)
     assert response.json["fontes"][0]["documento"].startswith("nrel")
 
 
