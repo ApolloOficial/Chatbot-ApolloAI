@@ -79,7 +79,7 @@ X-User-ID: tecnico-a8f3
 }
 ```
 
-A resposta inclui `session_id`, `resposta`, `status`, `agentes_chamados` e `fontes`, além de campos de segurança quando aplicável. Por padrão `fontes` volta vazio e nenhum nome de documento aparece no texto; `EXPOSE_SOURCES=true` devolve documento e página.
+A resposta inclui `session_id`, `resposta`, `status`, `agentes_chamados` e `fontes` (documento e página), além de campos de segurança quando aplicável.
 
 Outros endpoints: `GET /live`, `GET /health`, `GET /metrics`, `GET /openapi.json` e `GET /docs`. A API também oferece A2A (`/.well-known/agent-card.json`, `/a2a/v1`) e encerramento de sessão (`POST /sessions/{session_id}/close`). O contrato completo está no Swagger UI.
 
