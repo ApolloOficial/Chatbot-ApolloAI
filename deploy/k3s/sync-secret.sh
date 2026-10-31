@@ -31,7 +31,7 @@ neo4j = ("NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD")
 if any(values.get(name) for name in neo4j) and not all(values.get(name) for name in neo4j):
     raise SystemExit("Configure as três chaves NEO4J_* ou nenhuma delas")
 with open(sys.argv[2], "w", encoding="utf-8", newline="\n") as destination:
-    for name in (*required, "LANGSMITH_API_KEY", *neo4j):
+    for name in (*required, "LANGSMITH_API_KEY", *neo4j, "NEO4J_DATABASE"):
         if name not in required and not values.get(name):
             continue
         value = values[name]
