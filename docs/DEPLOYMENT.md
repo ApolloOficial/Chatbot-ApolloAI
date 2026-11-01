@@ -55,7 +55,9 @@ O Secret não possui arquivo de exemplo com valores substituíveis. Seu contrato
 - `REDIS_URL`.
 
 Opcionalmente, o mesmo segredo recebe as três chaves `NEO4J_*`; uma configuração
-incompleta é recusada pelo script de sincronização.
+incompleta é recusada pelo script de sincronização. `NEO4J_DATABASE` também pode ser
+incluída quando o banco não se chama `neo4j` (no Aura, o nome é o ID da instância);
+sem ela, o padrão é `neo4j`.
 
 O ServiceAccount não recebe IAM Role. Em K3s, o host EC2 usa o
 `LabInstanceProfile` somente durante a sincronização do segredo.
